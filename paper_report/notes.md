@@ -26,4 +26,4 @@ Implementation.
 CAP Theorem on course link.
 
 
-MEETING 28 novembre 11h. 
+MEETING 28 novembre 11h. Local robocup
