@@ -1,3 +1,6 @@
+[Markdown cheasheet](https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet)
+
+
 managing cross-datacenter replcated data.
 
 bigtable not good for complex, evolving schemas, strong consistency in wide area. 
