@@ -12,7 +12,7 @@ class Block:
         self._timestamp = timestamp
         self._transactions = transactions
         self._previousHash = previousHash
-        self._counter = 0
+        self._nonce = 0
         self._hash = self.compute_hash()
 
     def set_previous_hash(self, hash):
@@ -36,14 +36,14 @@ class Block:
     def compute_hash(self):
         """Compute hash value of the current block"""
         hashString = str(self._timestamp) + self.trans2str()\
-                     + self._previousHash + str(self._counter)
+                     + self._previousHash + str(self._nonce)
         hash_object = hashlib.sha256(hashString.encode('utf-8'))
         hex_dig = hash_object.hexdigest()
         return hex_dig
 
     def mine_block(self, difficulty):
         while self._hash[0:difficulty] != "0"*difficulty:
-            self._counter += 1
+            self._nonce += 1
             self._hash = self.compute_hash()
 
     def proof(self):
@@ -59,7 +59,7 @@ class Block:
                + "\ntransaction:\n" + self.trans2str()\
                + "\nPrevious hash: " + self._previousHash\
                + "\nHash: " + self._hash\
-               + "\ncounter: " + str(self._counter) + "\n" + "*"*25
+               + "\nnonce: " + str(self._nonce) + "\n" + "*"*25
 
 # TODO transaction are the key-value stored in our blockchain, we need to change
 # data in the constructor of a block ot a transaction/set of transactions.
