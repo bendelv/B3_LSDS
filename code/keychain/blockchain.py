@@ -61,8 +61,8 @@ class Block:
                + "\nHash: " + self._hash\
                + "\nnonce: " + str(self._nonce) + "\n" + "*"*25
 
-# TODO transaction are the key-value stored in our blockchain, we need to change
-# data in the constructor of a block ot a transaction/set of transactions.
+
+
 class Transaction:
     def __init__(self, origin, key, value):
         """A transaction, in our KV setting. A transaction typically involves
