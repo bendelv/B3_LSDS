@@ -16,6 +16,9 @@ We define the difficulty as being the number of 0 as the prefix of the hash valu
 Using an incrementing nonce we can thus implement a proof a work. As mentioned in
 the reference paper the amount of work is exponential w.r.t the number of 0s.
 
+__Broadcast system__
+  *Broadcast a new key/value to all users which update buffer. Create merkel tree at time t,
+   how to know if all users mine the same block? Consensus
 ## Todo
 
 1. ~~implement single blockchain.~~
