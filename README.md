@@ -24,5 +24,5 @@ the reference paper the amount of work is exponential w.r.t the number of 0s.
 4. implement unit tests.
 5. run test with 51% of the network.
 6. Implement API. (Alex)
-7. Add timestamp to each transaction to know which key is the oldest.
+7. ~~Add timestamp to each transaction to know which key is the oldest.~~
 8. Table containing key values (but how to protect it from hacker)

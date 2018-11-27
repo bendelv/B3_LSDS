@@ -71,11 +71,13 @@ class Transaction:
         self._origin = origin
         self._key = key
         self._value = value
+        self._timestamp = time.time()
 
     def __str__(self):
         return "\torigin: " + self._origin\
                + "\n\tkey: " + str(self._key)\
-               + "\n\tvalue: " + self._value + "\n"
+               + "\n\tvalue: " + self._value\
+               + "\n\ttimestamp: " + str(self._timestamp) + "\n"
 
 class Peer:
     def __init__(self, address):
