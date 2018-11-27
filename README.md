@@ -21,7 +21,7 @@ the reference paper the amount of work is exponential w.r.t the number of 0s.
 1. ~~implement single blockchain.~~
 2. implement broadcast system. (Beniboy)
 3. implement set of transaction as merkel tree. (Pierre)
-4. implement unit tests.
+4. implement unit tests. (ALL)
 5. run test with 51% of the network.
 6. Implement API. (Alex)
 7. ~~Add timestamp to each transaction to know which key is the oldest.~~
