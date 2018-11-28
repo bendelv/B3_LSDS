@@ -15,7 +15,6 @@ difficulty implementation is based on bitcoin paper __Chapter 4 (proof of work)_
 We define the difficulty as being the number of 0 as the prefix of the hash value.
 Using an incrementing nonce we can thus implement a proof a work. As mentioned in
 the reference paper the amount of work is exponential w.r.t the number of 0s.
-
 ## TODO
 
 1. [x] implement single blockchain.
@@ -47,3 +46,19 @@ List of all the unit test we need to do
 - try altering hashes
 - try altering multiple transaction
 - dumb and load different level of the blockchain
+
+#Broadcast system
+
+  *Broadcast a new key/value to all users which update buffer. Create merkel tree at time t,
+   how to know if all users mine the same block? Consensus, which one?
+
+## Todo
+
+1. ~~implement single blockchain.~~
+2. implement broadcast system. (Beniboy)
+3. implement set of transaction as merkel tree. (Pierre)
+4. implement unit tests. (ALL)
+5. run test with 51% of the network.
+6. Implement API. (Alex)
+7. ~~Add timestamp to each transaction to know which key is the oldest.~~
+8. Table containing key values (but how to protect it from hacker)
