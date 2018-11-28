@@ -2,6 +2,17 @@
 
 ## Notes
 
+- merkleTree is build as follow, we lsit all transaction and sort them according to
+the alphabetical order of the key, and we break the ties be sortinc according to the
+timestamp. Then we build the leaf on in a buttom up way we build the tree.
+- To mine the tree we first mine the leafs, then update the hashes.
+After that we mine every node in the tree and finally we mine the root of the tree.
+- To search presence in the tree, we use a array of prefixes attached to each node.
+The first element of the array indicate the lowest value present in the tree.
+The second element indicates the largest value in the tree.
+- The blockchain is dumped to json format in order to be send through messages.
+The is also a method of the chain in order to build the object from the json string.
+
 ## Links
 
 - [Orverleaf link](https://www.overleaf.com/5154783312jffsnfwyqfqp)
@@ -47,7 +58,7 @@ List of all the unit test we need to do
 - try altering multiple transaction
 - dumb and load different level of the blockchain
 
-#Broadcast system
+# Broadcast system
 
   *Broadcast a new key/value to all users which update buffer. Create merkel tree at time t,
    how to know if all users mine the same block? Consensus, which one?
