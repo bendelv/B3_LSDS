@@ -16,7 +16,7 @@ We define the difficulty as being the number of 0 as the prefix of the hash valu
 Using an incrementing nonce we can thus implement a proof a work. As mentioned in
 the reference paper the amount of work is exponential w.r.t the number of 0s.
 
-## Todo
+## TODO
 
 1. ~~implement single blockchain.~~
 2. implement broadcast system. (Beniboy)
@@ -28,11 +28,22 @@ the reference paper the amount of work is exponential w.r.t the number of 0s.
 8. Table containing key values (but how to protect it from hacker)
 
 
-### Todo Pierre
+### TODO Pierre
 
-- ~~implement search in the tree by adding min and max prefix to merkleTreeNodes.~~
-- ~~Verify existence travel through min max prefixes~~.
-- create one abstract class which will be used in treenoed/leaf and block
-- ~~look for dumping in json.~~
-- change compute hash to use json version, reduce number of important variables in json dumping for hash nor for serialization
-- ~~solve issuie with first prefix~~.
+- [x] implement search in the tree by adding min and max prefix to merkleTreeNodes.
+- [x] Verify existence travel through min max prefixes.
+- [ ] create one abstract class which will be used in treenoed/leaf and block
+- [x] look for dumping in json.
+- [x] change compute hash to use json version, reduce number of important variables in json dumping for hash nor for serialization
+- [x] solve issuie with first prefix.
+- [x] implement serialization
+
+### TODO unit Tests
+List of all the unit test we need to do
+#### Blockchain
+
+- try adding element and check validity
+- try altering one transaction
+- try altering hashes
+- try altering multiple transaction
+- dumb and load different level of the blockchain
