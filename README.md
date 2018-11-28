@@ -26,3 +26,13 @@ the reference paper the amount of work is exponential w.r.t the number of 0s.
 6. Implement API. (Alex)
 7. ~~Add timestamp to each transaction to know which key is the oldest.~~
 8. Table containing key values (but how to protect it from hacker)
+
+
+### Todo Pierre
+
+- ~~implement search in the tree by adding min and max prefix to merkleTreeNodes.~~
+- ~~Verify existence travel through min max prefixes~~.
+- create one abstract class which will be used in treenoed/leaf and block
+- ~~look for dumping in json.~~
+- change compute hash to use json version, reduce number of important variables in json dumping for hash nor for serialization
+- ~~solve issuie with first prefix~~.
