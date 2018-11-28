@@ -8,14 +8,41 @@ import time
 from queue import Queue
 import sys
 from operator import attrgetter
+import pickle
 import json
 
+
 class MerkleLeaf:
-    def __init__(self, transaction):
+    def __init__(self, transaction, prefixes=None, nonce=0, hash=None, leaf=True):
         self._transaction = transaction
-        self._prefixes = self.compute_prefixes()
-        self._nonce = 0
-        self._hash = self.compute_hash()
+        if prefixes is not None:
+            self._prefixes = prefixes
+        else:
+            self._prefixes = self.compute_prefixes()
+        self._nonce = nonce
+        if hash is not None:
+            self._hash = hash
+        else:
+            self._hash = self.compute_hash()
+        self._leaf = leaf
+
+    @classmethod
+    def fromJsonDict(cls, dict):
+        return cls(Transaction.fromJsonDict(dict['_transaction']),
+                   dict['_prefixes'],
+                   dict['_nonce'],
+                   dict['_hash'],
+                   dict['_leaf'])
+
+    def __str__(self):
+        dict = {}
+        dict["prefixes"] = self._prefixes
+        dict["transaction"] = self._transaction.toJson()
+        dict['nonce'] = self._nonce
+        return json.dumps(dict, indent=4)
+
+    def toJson(self):
+        return json.dumps(self, default=lambda o: o.__dict__, indent=4)
 
     def get_hash(self):
         return self._hash
@@ -27,20 +54,17 @@ class MerkleLeaf:
         return [str(self._transaction.get_key()),str(self._transaction.get_key())]
 
     def compute_hash(self):
-        hashString = str(self._transaction) + str(self._nonce)
+        hashString = str(self)
         hash_object = hashlib.sha256(hashString.encode('utf-8'))
         hex_dig = hash_object.hexdigest()
         return hex_dig
 
     def mine(self, difficulty):
+        print("Start Mining leaf...")
         while self._hash[0:difficulty] != "0"*difficulty:
             self._nonce += 1
             self._hash = self.compute_hash()
-
-    def __str__(self):
-        myStr = "\t\tPrefix: " + self._prefixes[0] + " " + self._prefixes[1]\
-                + "\n\t\t" + str(self._transaction)
-        return myStr
+        print("leaf mined")
 
     def is_valid(self):
         if self._hash != self.compute_hash():
@@ -63,23 +87,68 @@ class MerkleLeaf:
         else:
             return self._transaction.get_key() == key
 
-    def toJson(self):
-        dict = {}
-        dict["hash"] = self._hash
-        dict["prefixes"] = self._prefixes
-        dict["transaction"] = self._transaction.toJson()
-        dict['nonce'] = self._nonce
-        return dict
 
 class MerkleNode:
-    def __init__(self, left, right):
+    def __init__(self, left, right, leftHash=None, rightHash=None, prefixes=None, nonce=None, hash=None):
         self._left = left
         self._right = right
-        self._leftHash = left.get_hash()
-        self._rightHash = right.get_hash()
-        self._prefixes = self.compute_prefixes()
-        self._nonce = 0
-        self._hash = self.compute_hash()
+        if leftHash is not None:
+            self._leftHash = leftHash
+        else:
+            self._leftHash = left.get_hash()
+
+        if rightHash is not None:
+            self._rightHash = rightHash
+        else:
+            self._rightHash = right.get_hash()
+
+        if prefixes is not None:
+            self._prefixes = prefixes
+        else:
+            self._prefixes = self.compute_prefixes()
+
+        if nonce is not None:
+            self._nonce = nonce
+        else:
+            self._nonce = 0
+
+        if hash is not None:
+            self._hash = hash
+        else:
+            self._hash = self.compute_hash()
+
+    @classmethod
+    def fromJsonDict(cls, dict):
+        dict_left = dict['_left']
+        dict_right = dict['_right']
+        leftHash = dict['_leftHash']
+        rightHash = dict['_rightHash']
+        prefixes = dict['_prefixes']
+        nonce = dict['_nonce']
+        hash = dict['_hash']
+
+        if '_leaf' in dict_left.keys():
+            left = MerkleLeaf.fromJsonDict(dict_left)
+
+        else:
+            left = MerkleNode.fromJsonDict(dict_left)
+
+        if '_leaf' in dict_right.keys():
+            right = MerkleLeaf.fromJsonDict(dict_right)
+        else:
+            right = MerkleNode.fromJsonDict(dict_right)
+        return cls(left, right, leftHash, rightHash, prefixes, nonce, hash)
+
+    def __str__(self):
+        dict = {}
+        dict['prefixes'] = self._prefixes
+        dict['Left Hash'] = self._leftHash
+        dict['Right Hash'] = self._rightHash
+        dict['nonce'] = self._nonce
+        return json.dumps(dict, indent=4)
+
+    def toJson(self):
+        return json.dumps(self, default=lambda o: o.__dict__, indent=4)
 
     def get_hash(self):
         return self._hash
@@ -108,27 +177,23 @@ class MerkleNode:
         return smallest
 
     def compute_hash(self):
-        hashString = self._left._hash + self._right._hash + str(self._nonce)
+        hashString = str(self)
         hash_object = hashlib.sha256(hashString.encode('utf-8'))
         hex_dig = hash_object.hexdigest()
         return hex_dig
 
     def mine(self, difficulty):
+        print("Start mining left node...")
         self._left.mine(difficulty)
+        print("Left node mined")
+        print("Start mining Right node...")
         self._right.mine(difficulty)
+        print("Right node mined")
         self._leftHash = self._left.get_hash()
         self._rightHash = self._right.get_hash()
         while self._hash[0:difficulty] != "0"*difficulty:
             self._nonce += 1
             self._hash = self.compute_hash()
-
-    def __str__(self):
-        myStr = "Common prefix : " + str(self._prefixes)\
-                + "\nPrefix left : " + str(self._left._prefixes)\
-                + "\n\t\t " + str(self._left)\
-                + "\nPrefix right : " + str(self._right._prefixes)\
-                + ":\n\t\t " + str(self._right) + "\n"
-        return myStr
 
     def is_valid(self):
         if self.get_hash() != self.compute_hash():
@@ -178,26 +243,44 @@ class MerkleNode:
                     return False, None
             return self._left.in_tree(key, get, all) or self._right.in_tree(key, get, all)
 
-    def toJson(self):
-        dict = {}
-        dict['hash'] = self._hash
-        dict['prefixes'] = self._prefixes
-        dict['Left Hash'] = self._leftHash
-        dict['Left'] = self._left.toJson()
-        dict['Right Hash'] = self._rightHash
-        dict['Right'] = self._right.toJson()
-        dict['nonce'] = self._nonce
-        return dict
 
 class MerkleTree:
-    def __init__(self, transactions):
-        self.one = False
-        if len(transactions) > 1:
-            self._tree = self.buildMT(transactions.copy())
+    def __init__(self, transactions=None):
+        self._one = False
+        self._nonce = 0
+        if transactions is not None:
+            if len(transactions) > 1:
+                self._tree = self.buildMT(transactions.copy())
+            else:
+                self._tree = MerkleLeaf(transactions[0])
+                self._one = True
+            self._hash = self.compute_hash()
         else:
-            self._tree = MerkleLeaf(transactions[0])
-            self.one = True
-        self._hash = self._tree.get_hash()
+            self._tree = None
+            self._hash = 0
+
+    @classmethod
+    def fromJsonDict(cls, dict):
+        tree = dict['_tree']
+        object = cls()
+        object._one = dict['_one']
+        if object._one:
+            object._tree = MerkleLeaf.fromJsonDict(tree)
+        else:
+            object._tree = MerkleNode.fromJsonDict(tree)
+        object._nonce = dict['_nonce']
+        object._hash = dict['_hash']
+        return object
+
+    def __str__(self):
+        dict = {}
+        dict['one'] = self._one
+        dict['nonce'] = self._nonce
+        dict['root_hash'] = self._tree.get_hash()
+        return json.dumps(dict, indent = 4)
+
+    def toJson(self):
+        return json.dumps(self, default=lambda o: o.__dict__, indent=4)
 
     def get_hash(self):
         return self._hash
@@ -212,14 +295,14 @@ class MerkleTree:
             if jump_next:
                 jump_next = False
             else:
-                self.leftHash = MerkleLeaf(transaction)
-                self.rightHash = None
+                leftHash = MerkleLeaf(transaction)
+                rightHash = None
                 if i < len(transactions) - 1:
-                    self.rightHash = MerkleLeaf(transactions[i+1])
-                if self.rightHash is not None:
-                    to_process.put([self.leftHash, self.rightHash])
+                    rightHash = MerkleLeaf(transactions[i+1])
+                if rightHash is not None:
+                    to_process.put([leftHash, rightHash])
                 else:
-                    to_process.put([self.leftHash])
+                    to_process.put([leftHash])
                 jump_next = True
 
         tree = None
@@ -249,19 +332,19 @@ class MerkleTree:
 
         return tree
 
-    def __str__(self):
-        myStr = "prefxes :" + str([str(x) + " " for x in self._tree._prefixes]) + "\n"
-        myStr += "hash :" + self._tree._hash + "\n"
-        if self.one:
-            myStr += str(self._tree)
-        else:
-            myStr += str(self._tree._left)\
-                + str(self._tree._right)
-        return myStr
-
     def mine(self, difficulty):
+        print('Start mining tree...')
         self._tree.mine(difficulty)
-        self._hash = self._tree.get_hash()
+        print('tree mined')
+        while self._hash[0:difficulty] != "0"*difficulty:
+            self._nonce += 1
+            self._hash = self.compute_hash()
+
+    def compute_hash(self):
+        hashString = str(self)
+        hash_object = hashlib.sha256(hashString.encode('utf-8'))
+        hex_dig = hash_object.hexdigest()
+        return hex_dig
 
     def is_valid(self):
         if self._hash != self._tree.get_hash():
@@ -271,41 +354,37 @@ class MerkleTree:
     def is_inside(self, key, get=False, all=None):
         return self._tree.in_tree(key, get, all)
 
-    def toJson(self):
-        dict = {}
-        dict['hash'] = self._hash
-        dict['transactions'] = self._tree.toJson()
-        return dict
 
 class Transaction:
-    def __init__(self, origin, key, value):
+    def __init__(self, origin, key, value, timestamp=time.time()):
         """A transaction, in our KV setting. A transaction typically involves
         some key, value and an origin (the one who put it onto the storage).
         """
         self._origin = origin
         self._key = key
         self._value = value
-        self._timestamp = time.time()
+        self._timestamp = timestamp
+
+    @classmethod
+    def fromJsonDict(cls, dict):
+        return cls(dict['_origin'], dict['_key'], dict['_value'], dict['_timestamp'])
+
+    def __str__(self):
+        dict = {}
+        dict["Origin"] = self._origin
+        dict["Key"] = self._key
+        dict["Value"] = self._value
+        dict["timestamp"] = self._timestamp
+        return json.dumps(dict, indent = 4)
+
+    def toJson(self):
+        return json.dumps(self, default=lambda o: o.__dict__, indent=4)
 
     def get_key(self):
         return self._key
 
     def get_timestamp(self):
         return self._timestamp
-
-    def __str__(self):
-        return "\torigin: " + self._origin\
-               + "\n\tkey: " + str(self._key)\
-               + "\n\tvalue: " + self._value\
-               + "\n\ttimestamp: " + str(self._timestamp) + "\n"
-
-    def toJson(self):
-        dict = {}
-        dict["Origin"] = self._origin
-        dict["Key"] = self._key
-        dict["Value"] = self._value
-        dict["timestamp"] = self._timestamp
-        return dict
 
 
 class Peer:
@@ -317,18 +396,60 @@ class Peer:
         self._address = address
 
 
-
 class Block:
-    def __init__(self, timestamp, transactions, previousHash = ""):
+    def __init__(self, timestamp, transactions, previousHash = "", nonce=None, transactionsHash=None, hash=None, notrans=None):
         """Describe the properties of a block."""
         self._timestamp = timestamp
-        if transactions is None:
-            self._transactions = transactions
+        if notrans is None:
+            if transactions is None:
+                self._transactions = transactions
+                self._notrans = True
+                self._transactionsHash = None
+            else:
+                self._transactions = MerkleTree(transactions)
+                self._notrans = False
+                self._transactionsHash = self._transactions.get_hash()
         else:
-            self._transactions = MerkleTree(transactions)
+            self._transactions = transactions
+            self._notrans = notrans
+            self._transactionsHash = transactionsHash
+
         self._previousHash = previousHash
-        self._nonce = 0
-        self._hash = self.compute_hash()
+
+        if nonce is not None:
+            self._nonce = nonce
+        else:
+            self._nonce = 0
+
+        if hash is not None:
+            self._hash = hash
+        else:
+            self._hash = self.compute_hash()
+
+    @classmethod
+    def fromJsonDict(cls, dict):
+        notrans = dict['_notrans']
+        if notrans:
+            transactions = dict['_transactions']
+        else:
+            transactions = MerkleTree.fromJsonDict(dict['_transactions'])
+        previousHash = dict['_previousHash']
+        timestamp = dict['_timestamp']
+        nonce = dict['_nonce']
+        hash = dict['_hash']
+        transactionsHash = dict['_transactionsHash']
+        return cls(timestamp, transactions, previousHash, nonce, transactionsHash, hash, notrans)
+
+    def __str__(self):
+        dict = {}
+        dict['timestamp'] = self._timestamp
+        dict['transactuions_hash'] = self._transactionsHash
+        dict['nonce'] = self._nonce
+        dict['previousHash'] = self._previousHash
+        return json.dumps(dict, indent = 4)
+
+    def toJson(self):
+        return json.dumps(self, default=lambda o: o.__dict__, indent=4)
 
     def set_previous_hash(self, hash):
         self._previousHash = hash
@@ -339,18 +460,17 @@ class Block:
     def get_hash(self):
         return self._hash
 
-    def refresh_hash(self):
-        self._hash = self.compute_hash()
-
     def compute_hash(self):
         """Compute hash value of the current block"""
-        hashString = str(self._timestamp) + str(self._transactions)\
-                     + self._previousHash + str(self._nonce)
+        hashString = str(self)
         hash_object = hashlib.sha256(hashString.encode('utf-8'))
         hex_dig = hash_object.hexdigest()
         return hex_dig
 
-    def mine_block(self, difficulty):
+    def mine(self, difficulty):
+        print("Strat mining transactions...")
+        self._transactions.mine(difficulty)
+        print("Transactions mined")
         while self._hash[0:difficulty] != "0"*difficulty:
             self._nonce += 1
             self._hash = self.compute_hash()
@@ -366,37 +486,53 @@ class Block:
     def is_valid(self):
         return self._transactions.is_valid()
 
-    def __str__(self):
-        return "*"*25 + "\ntimestamp: " + str(self._timestamp)\
-               + "\ntransaction:\n" + str(self._transactions)\
-               + "\nPrevious hash: " + self._previousHash\
-               + "\nHash: " + self._hash\
-               + "\nnonce: " + str(self._nonce) + "\n" + "*"*25
-
     def is_inside(self, key, get=False, all=None):
         return self._transactions.is_inside(key, get, all)
 
 class Blockchain:
-    def __init__(self, bootstrap, difficulty):
+    def __init__(self, bootstrap=None, difficulty=None, blocks=None, transactionBuffer=None):
         """The bootstrap address serves as the initial entry point of
         the bootstrapping procedure. In principle it will contact the specified
         addres, download the peerlist, and start the bootstrapping procedure.
         """
         # Initialize the properties.
         self._difficulty = difficulty
-        self._blocks = [self._add_genesis_block()]
-        self._transactionBuffer = []
+        if blocks is None:
+            self._blocks = [self._add_genesis_block()]
+        else:
+            self._blocks = blocks
+        if transactionBuffer is None:
+            self._transactionBuffer = []
+        else:
+            self._transactionBuffer = transactionBuffer
         #self._peers = []
 
 
         # Bootstrap the chain with the specified bootstrap address.
         #self._bootstrap(bootstrap)
 
+    @classmethod
+    def fromJsonDict(cls, dict):
+        difficulty = dict['_difficulty']
+        transactionBufferDict = dict['_transactionBuffer']
+        transactionBuffer = []
+        for t in transactionBufferDict:
+            transactionBuffer.append(Transaction.fromJsonDict(t))
+        blockDict = dict['_blocks']
+        block = []
+        for b in blockDict:
+            block.append(Block.fromJsonDict(b))
+
+        return cls(None, difficulty, block, transactionBuffer)
+
     def __str__(self):
         myStr = ""
         for block in self._blocks:
             myStr = myStr + "\n" + "="*25 + "\n" + str(block) + "\n" + "="*25 + "\n"
         return myStr
+
+    def toJson(self):
+        return json.dumps(self, default=lambda o: o.__dict__, indent=4)
 
     def last_element(self):
         return self._blocks[len(self._blocks) - 1]
@@ -429,11 +565,13 @@ class Blockchain:
         """Implements the mining procedure."""
         #We should block any procces attemding to write a new transaction in the
         # transactions set.
+        print('Statr mining new block...')
         newBlock = Block(time.time(), self._transactionBuffer.copy())
         self._transactionBuffer = []
         newBlock.set_previous_hash(self.last_element().get_hash())
-        newBlock.mine_block(self._difficulty)
+        newBlock.mine(self._difficulty)
         self._blocks.append(newBlock)
+        print('Block minied')
 
     def is_valid(self):
         """Checks if the current state of the blockchain is valid.
@@ -476,36 +614,268 @@ class Blockchain:
         return all
 
 def main():
+    '''Test with 0 transaction.
+            - Cannot be tested with merkleTree and no transactionsself.
+            - OKaY with merkleTree
+            - OKAY with blockchaine
+    '''
+    '''
+    transactionBuffer = None
+    bl = Block(time.time(), transactionBuffer, "")
+    print(bl.toJson())
+    bl2 = Block.fromJsonDict(json.loads(bl.toJson()))
+    print(bl2.toJson())
+    print(bl2.toJson() == bl.toJson())
+    sys.exit()
+    '''
 
+    ''' OKAY  With blockChaine and 0 transaction   '''
+    '''
+    bc= Blockchain("bootstrap", 3)
+    bc2 = Blockchain.fromJsonDict(json.loads(bc.toJson()))
+    print(bc2.toJson() == bc.toJson())
+    sys.exit()
+    '''
+
+    '''Test with 1 transaction:
+            - OKAY with merkleTree
+            - OKAY with block
+            - OKAY with blockchain
     transactionBuffer = []
     t1 = Transaction("pierre1", "key4", "some value set to 0")
-    #dict = t1.toJson()
-    #print(json.dumps(dict, indent = 4))
-    #leaf = MerkleLeaf(t1)
-    #dict = leaf.toJson()
-    #print(json.dumps(dict, indent = 4))
+    transactionBuffer.append(t1)
+    mt = MerkleTree(transactionBuffer)
+    print(mt.toJson())
+    mt2 = MerkleTree.fromJsonDict(json.loads(mt.toJson()))
+    print(mt2.toJson() == mt.toJson())
+    sys.exit()
+    '''
+
+    ''' OKAY  With block and 1 transaction   '''
+    '''
+    transactionBuffer = []
+    t1 = Transaction("pierre1", "key4", "some value set to 0")
+    transactionBuffer.append(t1)
+    bl = Block(time.time(), transactionBuffer, "")
+    bl2 = Block.fromJsonDict(json.loads(bl.toJson()))
+    print(bl2.toJson() == bl.toJson())
+    sys.exit()
+    '''
+
+    ''' OKAY  With blockChaine and 1 transaction   '''
+    '''
+    transactionBuffer = []
+    t1 = Transaction("pierre1", "key4", "some value set to 0")
+    transactionBuffer.append(t1)
+    bc= Blockchain("bootstrap", 3)
+    bc.add_transaction(t1)
+    bc.mine()
+    bc2 = Blockchain.fromJsonDict(json.loads(bc.toJson()))
+    print(bc2.toJson() == bc.toJson())
+    sys.exit()
+    '''
+
+
+    '''Test with 2 transactions:
+            - OKAY with merkleTree
+            - OKAY with block
+            - OKAY with blockchain
+    '''
+    '''
+    transactionBuffer = []
+    t1 = Transaction("pierre1", "key4", "some value set to 0")
+    transactionBuffer.append(t1)
+    t2 = Transaction("pierre2", "key4", "some key value")
+    transactionBuffer.append(t2)
+    mt = MerkleTree(transactionBuffer)
+    mt2 = MerkleTree.fromJsonDict(json.loads(mt.toJson()))
+    print(mt2.toJson() == mt.toJson())
+    sys.exit()
+    '''
+
+    ''' OKAY  With block and 2 transaction   '''
+    '''
+    transactionBuffer = []
+    t1 = Transaction("pierre1", "key4", "some value set to 0")
+    transactionBuffer.append(t1)
+    t2 = Transaction("pierre2", "key4", "some key value")
+    transactionBuffer.append(t2)
+    bl = Block(time.time(), transactionBuffer, "")
+    bl2 = Block.fromJsonDict(json.loads(bl.toJson()))
+    print(bl2.toJson() == bl.toJson())
+    sys.exit()
+    '''
+
+    ''' OKAY  With blockChaine and 1 transaction   '''
+    '''
+    transactionBuffer = []
+    t1 = Transaction("pierre1", "key4", "some value set to 0")
+    t2 = Transaction("pierre2", "key4", "some key value")
+    bc= Blockchain("bootstrap", 3)
+    bc.add_transaction(t1)
+    bc.add_transaction(t2)
+    bc.mine()
+    bc2 = Blockchain.fromJsonDict(json.loads(bc.toJson()))
+    print(bc2.toJson() == bc.toJson())
+    sys.exit()
+    '''
 
 
 
-
+    '''Test with 3 transactions:
+            - OKAY with merkleTree
+            - OKAY with block
+    '''
+    '''
+    transactionBuffer = []
+    t1 = Transaction("pierre1", "key4", "some value set to 0")
     transactionBuffer.append(t1)
     t2 = Transaction("pierre2", "key4", "some key value")
     transactionBuffer.append(t2)
     t3 = Transaction("pierre3", "key44", "some other value")
     transactionBuffer.append(t3)
-    transactionBuffer2 = []
-    t21 = Transaction("pierre4", "key4", "some value set to 0")
-    transactionBuffer2.append(t21)
-    t22 = Transaction("pierre5", "key4", "some key value")
-    transactionBuffer2.append(t22)
-    t23 = Transaction("pierre6", "key44", "some other value")
-    transactionBuffer2.append(t23)
-    merkleTree = MerkleTree(transactionBuffer2)
+    mt = MerkleTree(transactionBuffer)
+    #print(mt.toJson())
+    mt2 = MerkleTree.fromJsonDict(json.loads(mt.toJson()))
+    print(mt2.toJson())
+    print(mt2.toJson() == mt.toJson())
+    sys.exit()
+    '''
 
-    dict = merkleTree.toJson()
-    print(json.dumps(dict, indent = 4))
+    ''' OKAY  With block and 3 transaction  '''
+    '''
+    transactionBuffer = []
+    t1 = Transaction("pierre1", "key4", "some value set to 0")
+    transactionBuffer.append(t1)
+    t2 = Transaction("pierre2", "key4", "some key value")
+    transactionBuffer.append(t2)
+    t3 = Transaction("pierre3", "key44", "some other value")
+    transactionBuffer.append(t3)
+    bl = Block(time.time(), transactionBuffer, "")
+    bl2 = Block.fromJsonDict(json.loads(bl.toJson()))
+    print(bl2.toJson() == bl.toJson())
+    sys.exit()
+    '''
+
+    ''' OKAY  With blockChaine and 3 transaction   '''
+    '''
+    transactionBuffer = []
+    t1 = Transaction("pierre1", "key4", "some value set to 0")
+    t2 = Transaction("pierre2", "key4", "some key value")
+    t3 = Transaction("pierre3", "key44", "some other value")
+    bc= Blockchain("bootstrap", 3)
+    bc.add_transaction(t1)
+    bc.add_transaction(t2)
+    bc.add_transaction(t3)
+    bc.mine()
+    bc2 = Blockchain.fromJsonDict(json.loads(bc.toJson()))
+    print(bc2.toJson() == bc.toJson())
+    sys.exit()
+    '''
+
+    '''Test with 4 transactions:
+            - OKAY with merkleTree
+            - OKAY with block
+            - OKAY with blockchain
+    '''
+    '''
+    transactionBuffer = []
+    t1 = Transaction("pierre1", "key4", "some value set to 0")
+    transactionBuffer.append(t1)
+    t2 = Transaction("pierre2", "key4", "some key value")
+    transactionBuffer.append(t2)
+    t3 = Transaction("pierre3", "key44", "some other value")
+    transactionBuffer.append(t3)
+    t4 = Transaction("pierre3", "key44", "some random other value")
+    transactionBuffer.append(t4)
+    mt = MerkleTree(transactionBuffer)
+    #print(mt.toJson())
+    mt2 = MerkleTree.fromJsonDict(json.loads(mt.toJson()))
+    print(mt2.toJson())
+    print(mt2.toJson() == mt.toJson())
+    sys.exit()
+    '''
+
+    ''' OKAY  With block and 4 transaction  '''
+    '''
+    transactionBuffer = []
+    t1 = Transaction("pierre1", "key4", "some value set to 0")
+    transactionBuffer.append(t1)
+    t2 = Transaction("pierre2", "key4", "some key value")
+    transactionBuffer.append(t2)
+    t3 = Transaction("pierre3", "key44", "some other value")
+    transactionBuffer.append(t3)
+    t4 = Transaction("pierre3", "key44", "some random other value")
+    transactionBuffer.append(t4)
+    bl = Block(time.time(), transactionBuffer, "")
+    bl2 = Block.fromJsonDict(json.loads(bl.toJson()))
+    print(bl2.toJson() == bl.toJson())
+    sys.exit()
+    '''
+
+    ''' OKAY  With blockChaine and 4 transaction   '''
+    '''
+    transactionBuffer = []
+    t1 = Transaction("pierre1", "key4", "some value set to 0")
+    t2 = Transaction("pierre2", "key4", "some key value")
+    t3 = Transaction("pierre3", "key44", "some other value")
+    t4 = Transaction("pierre3", "key44", "some random other value")
+    bc= Blockchain("bootstrap", 3)
+    bc.add_transaction(t1)
+    bc.add_transaction(t2)
+    bc.add_transaction(t3)
+    bc.mine()
+    bc2 = Blockchain.fromJsonDict(json.loads(bc.toJson()))
+    print(bc2.toJson() == bc.toJson())
+    sys.exit()
+    '''
+
+
+    '''Test with 4 transactions and 2 blocks:
+            - Testing
+    '''
+    bc= Blockchain("bootstrap", 3)
+    t1 = Transaction("pierre1", "key4", "some value set to 0")
+    bc.add_transaction(t1)
+    t2 = Transaction("pierre2", "key4", "some key value")
+    bc.add_transaction(t2)
+    t3 = Transaction("pierre3", "key44", "some other value")
+    bc.add_transaction(t3)
+    t4 = Transaction("pierre3", "key44", "some random other value")
+    bc.add_transaction(t4)
+    bc.mine()
+    t21 = Transaction("pierre4", "key4", "some value set to 0")
+    bc.add_transaction(t21)
+    t22 = Transaction("pierre5", "key4", "some key value")
+    bc.add_transaction(t22)
+    t23 = Transaction("pierre6", "key44", "some other value")
+    bc.add_transaction(t23)
+    bc.mine()
+    bc2 = Blockchain.fromJsonDict(json.loads(bc.toJson()))
+    print(bc2.toJson() == bc.toJson())
     sys.exit()
 
+
+    #t3 = Transaction("pierre3", "key44", "some other value")
+    #transactionBuffer.append(t3)
+    #transactionBuffer2 = []
+    #t21 = Transaction("pierre4", "key4", "some value set to 0")
+    #transactionBuffer2.append(t21)
+    #t22 = Transaction("pierre5", "key4", "some key value")
+    #transactionBuffer2.append(t22)
+    #t23 = Transaction("pierre6", "key44", "some other value")
+    #transactionBuffer2.append(t23)
+    #merkleTree = MerkleTree(transactionBuffer2)
+    '''
+    jsonString = t1.toJson()
+    t5 = Transaction.fromJsonDict(json.loads(jsonString))
+    ml = MerkleLeaf(t5)
+    jsonString = ml.toJson()
+    ml2 = MerkleLeaf.fromJsonDict(json.loads(jsonString))
+    print(ml2.toJson())
+    '''
+
+    '''
     print(merkleTree.is_inside("key44"))
     print(merkleTree.is_inside("key442"))
     print(merkleTree.is_inside("key4"))
@@ -519,6 +889,7 @@ def main():
     t1._key = "mouahahah"
     print(merkleTree.is_valid())
 
+    '''
 
     blockchain = Blockchain("bootstrap", 3)
     blockchain.add_transaction(t1)
@@ -529,6 +900,7 @@ def main():
     blockchain.add_transaction(t22)
     blockchain.add_transaction(t23)
     blockchain.mine()
+    '''
     print("*"*25)
     print("contains")
     print(blockchain.is_inside("key4"))
@@ -539,7 +911,8 @@ def main():
     for a in all:
         print(a)
     print("*"*25)
-
+    '''
+    print(blockchain.toJson())
     #newBlock.set_previous_hash("some hash value")
     #print(blockchain.is_valid())
 
