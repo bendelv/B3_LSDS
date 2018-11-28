@@ -831,8 +831,9 @@ def main():
     '''
 
 
-    '''Test with 4 transactions and 2 blocks:
-            - Testing
+    '''Test with 4 transactions and multiple blocks:
+            - OKAY with 4 transaction and 2 blocks
+    '''
     '''
     bc= Blockchain("bootstrap", 3)
     t1 = Transaction("pierre1", "key4", "some value set to 0")
@@ -854,67 +855,38 @@ def main():
     bc2 = Blockchain.fromJsonDict(json.loads(bc.toJson()))
     print(bc2.toJson() == bc.toJson())
     sys.exit()
-
-
-    #t3 = Transaction("pierre3", "key44", "some other value")
-    #transactionBuffer.append(t3)
-    #transactionBuffer2 = []
-    #t21 = Transaction("pierre4", "key4", "some value set to 0")
-    #transactionBuffer2.append(t21)
-    #t22 = Transaction("pierre5", "key4", "some key value")
-    #transactionBuffer2.append(t22)
-    #t23 = Transaction("pierre6", "key44", "some other value")
-    #transactionBuffer2.append(t23)
-    #merkleTree = MerkleTree(transactionBuffer2)
-    '''
-    jsonString = t1.toJson()
-    t5 = Transaction.fromJsonDict(json.loads(jsonString))
-    ml = MerkleLeaf(t5)
-    jsonString = ml.toJson()
-    ml2 = MerkleLeaf.fromJsonDict(json.loads(jsonString))
-    print(ml2.toJson())
     '''
 
     '''
-    print(merkleTree.is_inside("key44"))
-    print(merkleTree.is_inside("key442"))
-    print(merkleTree.is_inside("key4"))
-    print(merkleTree.is_inside("key4", True)[1])
-    print(merkleTree.is_inside("key"))
-    print(merkleTree.is_inside("key4", True)[1])
-    all = merkleTree.is_inside("key4", True, [])
-    for a in all:
-        print(a)
-    print(merkleTree.is_valid())
-    t1._key = "mouahahah"
-    print(merkleTree.is_valid())
-
+    bc= Blockchain("bootstrap", 3)
+    t1 = Transaction("pierre1", "key4", "some value set to 0")
+    bc.add_transaction(t1)
+    t2 = Transaction("pierre2", "key4", "some key value")
+    bc.add_transaction(t2)
+    t3 = Transaction("pierre3", "key44", "some other value")
+    bc.add_transaction(t3)
+    t4 = Transaction("pierre3", "key44", "some random other value")
+    bc.add_transaction(t4)
+    bc.mine()
+    t21 = Transaction("pierre4", "key4", "some value set to 0")
+    bc.add_transaction(t21)
+    t22 = Transaction("pierre5", "key4", "some key value")
+    bc.add_transaction(t22)
+    t23 = Transaction("pierre6", "key44", "some other value")
+    bc.add_transaction(t23)
+    bc.mine()
+    t31 = Transaction("pierre7", "key4", "some value set to 0")
+    bc.add_transaction(t31)
+    t32 = Transaction("pierre8", "key4", "some key value")
+    bc.add_transaction(t32)
+    t33 = Transaction("pierre9", "key44", "some other value")
+    bc.add_transaction(t33)
+    t34 = Transaction("pierre10", "key44", "some random other value")
+    bc.add_transaction(t34)
+    bc.mine()
+    bc2 = Blockchain.fromJsonDict(json.loads(bc.toJson()))
+    print(bc2.toJson() == bc.toJson())
+    sys.exit()
     '''
-
-    blockchain = Blockchain("bootstrap", 3)
-    blockchain.add_transaction(t1)
-    blockchain.add_transaction(t2)
-    blockchain.add_transaction(t3)
-    blockchain.mine()
-    blockchain.add_transaction(t21)
-    blockchain.add_transaction(t22)
-    blockchain.add_transaction(t23)
-    blockchain.mine()
-    '''
-    print("*"*25)
-    print("contains")
-    print(blockchain.is_inside("key4"))
-    print("GET")
-    print(blockchain.is_inside("key44", True))
-    print("ALL")
-    all = blockchain.is_inside("key4", True, [])
-    for a in all:
-        print(a)
-    print("*"*25)
-    '''
-    print(blockchain.toJson())
-    #newBlock.set_previous_hash("some hash value")
-    #print(blockchain.is_valid())
-
 if __name__ == "__main__":
     main()
