@@ -1,6 +1,6 @@
-# info8002_LSDS Project
+# 1. Info8002_LSDS Project
 
-## Notes
+## 1.1 Notes
 
 - merkleTree is build as follow, we lsit all transaction and sort them according to
 the alphabetical order of the key, and we break the ties be sortinc according to the
@@ -13,20 +13,20 @@ The second element indicates the largest value in the tree.
 - The blockchain is dumped to json format in order to be send through messages.
 The is also a method of the chain in order to build the object from the json string.
 
-## Links
+## 1.2 Links
 
 - [Orverleaf link](https://www.overleaf.com/5154783312jffsnfwyqfqp)
 - [Unit tests](https://docs.python.org/3.5/library/unittest.html)
 - [Bitcoin](https://bitcoin.org/bitcoin.pdf)
 - [Markdown Cheatsheet](https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet)
 
-## Remarque
+## 1.3 Remarque
 
 difficulty implementation is based on bitcoin paper __Chapter 4 (proof of work)__.
 We define the difficulty as being the number of 0 as the prefix of the hash value.
 Using an incrementing nonce we can thus implement a proof a work. As mentioned in
 the reference paper the amount of work is exponential w.r.t the number of 0s.
-## TODO
+## 1.4 TODO
 
 1. [x] implement single blockchain.
 2. [ ] implement broadcast system. (Beniboy)
@@ -38,7 +38,7 @@ the reference paper the amount of work is exponential w.r.t the number of 0s.
 8. [ ] Table containing key values (but how to protect it from hacker)
 
 
-### TODO Pierre
+### 1.4.1 TODO Pierre
 
 - [x] implement search in the tree by adding min and max prefix to merkleTreeNodes.
 - [x] Verify existence travel through min max prefixes.
@@ -48,9 +48,9 @@ the reference paper the amount of work is exponential w.r.t the number of 0s.
 - [x] solve issuie with first prefix.
 - [x] implement serialization
 
-### TODO unit Tests
+### 1.4.2 TODO unit Tests
 List of all the unit test we need to do
-#### Blockchain
+#### 1.4.3 Blockchain
 
 - try adding element and check validity
 - try altering one transaction
@@ -58,12 +58,12 @@ List of all the unit test we need to do
 - try altering multiple transaction
 - dumb and load different level of the blockchain
 
-# Broadcast system
+# 2. Broadcast system
 
   *Broadcast a new key/value to all users which update buffer. Create merkel tree at time t,
    how to know if all users mine the same block? Consensus, which one?
 
-## Todo
+## 2.1 Todo
 
 1. ~~implement single blockchain.~~
 2. implement broadcast system. (Beniboy)
