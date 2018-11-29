@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, request
 from threading import Thread
 import http.client as httplib
 import json
@@ -22,7 +22,7 @@ class Server:
         self.app = Flask(__name__)
         self.app.add_url_rule('/getBlockChain', 'coucou', self.sendBlockChain)
         self.app.add_url_rule('/addPeer/<newPeer>', 'addpeer', self.addPeer)
-        self.app.add_url_rule('/rcvMsg/?msg=<msg>', 'rcvmsg', self.rcvMsg, methods = 'POST')
+        self.app.add_url_rule('/rcvMsg/', 'rcvmsg', self.rcvMsg, methods = ['POST'])
 
         self.app.run(debug=True, use_reloader=False, host=host, port=port)
 
@@ -35,11 +35,11 @@ class Server:
     def rcvMsg(self):
         msg = request.args.get('msg', '')
         print(msg)
-        pass
+        return "msg received"
 
 class Client:
     def __init__(self):
-        self.connected = ['192.168.1.25:5000', '192.168.1.60:5000']
+        self.connected = ['192.168.1.25:5000']
         pass
 
     def getBlockChain(self):
@@ -50,11 +50,9 @@ class Client:
 
     def broadcast(self, msg):
 
-        jsonData = json.dumps(msg)
         for connected in self.connected:
-            headers = {'Content-type': 'application/json'}
             conn = httplib.HTTPConnection("{}".format(connected))
-            conn.request("POST", "/rcvMsg/?msg={}".format(jsonData), headers)
+            conn.request("POST", "/rcvMsg/?msg={}".format(msg))
             res = conn.getresponse()
         pass
 
