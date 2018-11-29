@@ -6,27 +6,32 @@ import time
 
 class Peer:
     def __init__(self, bootsDist, bootsLoc):
+        print(bootsLoc)
         self.serverSide = Server(bootsLoc, self)
         self.clientSide = Client(bootsDist, bootsLoc)
         pass
 
     def removeConnection(self):
+        print(self.clientSide.connected)
         self.clientSide.disconnect()
 
 class Server:
     def __init__(self, address, peer):
+        print(address)
         self.peer = peer
-        server = Thread(target = self.launchServer, args=address)
+        server = Thread(target = self.launchServer, args=[address])
         server.start()
         pass
 
-    def launchServer(self, address):
+    def launchServer(self, args):
+        address = args
         self.app = Flask(__name__)
         self.app.add_url_rule('/getBlockChain', 'coucou', self.sendBlockChain)
         self.app.add_url_rule('/addNode/', 'addNode', self.addNode)
-        self.app.add_url_rule('/rmNode/', 'rmNode' self.rmNode, methods = ['POST'])
+        self.app.add_url_rule('/rmNode/', 'rmNode', self.rmNode, methods = ['POST'])
 
         myList = address.split(':')
+        print(myList)
         host = myList[0]
         port = myList[1]
         self.app.run(debug=True, use_reloader=False, host=host, port=port)
@@ -68,32 +73,41 @@ class Client:
 
     def fetchConnected(self):
         conn = httplib.HTTPConnection("{}".format(self.bootsDist))
-        conn.request("POST","/newAddress/?address={}".format(self.boots))
+        conn.request("POST","/addNode/?address={}".format(self.bootsLoc))
         jsonConnected = conn.getresponse().read()
-        self.connected = json.loads(jsonConnected)
-        print(self.connected)
+        connected = json.loads(jsonConnected)
+        return connected
 
     def disconnect(self):
+        print(self.connected)
         conn = httplib.HTTPConnection("{}".format(self.bootsDist))
         conn.request("DELETE","/rmNode/?address={}".format(self.bootsLoc))
         print(conn.getresponse().read())
         #TODO: broadcast disconnect to every node
-        broadcast('DELETE', "/rmNode/?address={}")
+        print(self.connected)
+        self.broadcast('DELETE', "/rmNode/?address={}")
 
     def addNode(self, address):
         if address not in self.connected:
             self.connected.append(address)
             print("node {} added".format(address))
+            print(self.connected)
         pass
 
     def rmNode(self, address):
-        if address in self.connected:
+        if address in self.connected and (not bootsLoc):
+            if address == bootsLoc:
+                print(bootsLoc)
+
             self.connected.remove(address)
             print("node {} removed".format(address))
+            print(self.connected)
         pass
 
 def main():
-    peer = Peer(('192.168.1.25:5000'), ('192.168.1.60:5000'))
+    peer = Peer("192.168.1.25:5000", "192.168.1.60:5000")
+    print(peer.clientSide.connected)
+    input()
     peer.removeConnection()
     return 0
 
