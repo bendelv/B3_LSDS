@@ -14,8 +14,8 @@ class Bootstrap(object):
     def launchServer(self, host, port):
         self.app = Flask(__name__)
         self.app.add_url_rule('/', 'home', self.home_page, methods=['GET'])
-        self.app.add_url_rule('/newAddress/', 'new_address', self.add_node, methods=['GET', 'POST'])
-        self.app.add_url_rule('/rmAddress/', 'rm_address', self.remove_node, methods=['DELETE'])
+        self.app.add_url_rule('/addNode/', 'add_node', self.add_node, methods=['GET', 'POST'])
+        self.app.add_url_rule('/rmNode/', 'rm_node', self.remove_node, methods=['DELETE'])
         self.app.run(debug=True, use_reloader=False, host=host, port=port)
 
     def home_page(self):
