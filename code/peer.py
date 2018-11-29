@@ -21,8 +21,8 @@ class Server:
     def launchServer(self, host, port):
         self.app = Flask(__name__)
         self.app.add_url_rule('/getBlockChain', 'coucou', self.sendBlockChain)
-        self.app.add_url_rule('/addPeer/<newPeer>', 'coucou', self.addPeer)
-        self.app.add_url_rule('/rcvMsg/?msg=<msg>', 'coucou', self.rcvMsg, methods = 'POST')
+        self.app.add_url_rule('/addPeer/<newPeer>', 'addpeer', self.addPeer)
+        self.app.add_url_rule('/rcvMsg/?msg=<msg>', 'rcvmsg', self.rcvMsg, methods = 'POST')
 
         self.app.run(debug=True, use_reloader=False, host=host, port=port)
 
