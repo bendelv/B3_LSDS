@@ -5,62 +5,96 @@ import json
 import time
 
 class Peer:
-    def __init__(self, bootsDist, bootLoc):
-        self.serverSide = Server(bootsLoc[0], bootsLoc[1])
-        self.clientSide = Client(bootsDist[0], bootsDist[1])
+    def __init__(self, bootsDist, bootsLoc):
+        self.serverSide = Server(bootsLoc, self)
+        self.clientSide = Client(bootsDist, bootsLoc)
         pass
 
+    def removeConnection(self):
+        self.clientSide.disconnect()
+
 class Server:
-    def __init__(self, host, port):
-        server = Thread(target = self.launchServer, args = (host, port))
+    def __init__(self, address, peer):
+        self.peer = peer
+        server = Thread(target = self.launchServer, args=address)
         server.start()
         pass
 
-    def launchServer(self, host, port):
+    def launchServer(self, address):
         self.app = Flask(__name__)
         self.app.add_url_rule('/getBlockChain', 'coucou', self.sendBlockChain)
-        self.app.add_url_rule('/addPeer/<newPeer>', 'addpeer', self.addPeer)
-        self.app.add_url_rule('/rcvMsg/', 'rcvmsg', self.rcvMsg, methods = ['POST'])
+        self.app.add_url_rule('/addNode/', 'addNode', self.addNode)
+        self.app.add_url_rule('/rmNode/', 'rmNode' self.rmNode, methods = ['POST'])
 
+        myList = address.split(':')
+        host = myList[0]
+        port = myList[1]
         self.app.run(debug=True, use_reloader=False, host=host, port=port)
 
     def sendBlockChain(self):
         return "coucou"
 
-    def addPeer(self):
-        pass
+    def addNode(self):
+        address = request.args.get('address', '')
+        self.peer.clientSide.addNode(address)
 
-    def rcvMsg(self):
-        msg = request.args.get('msg', '')
-        print(msg)
-        return "msg received"
+        return "node {} added".format(address)
+
+    def rmNode(self):
+        address = request.args.get('address', '')
+        self.peer.clientSide.rmNode(address)
+
+        return "node removed"
 
 class Client:
-    def __init__(self, host, port):
-        self.connected = []
-        pass
+    def __init__(self, bootsDist, bootsLoc):
+        self.bootsDist = bootsDist
+        self.bootsLoc = bootsLoc
 
-    def getBlockChain(self):
-        conn = httplib.HTTPConnection("{}:{}".format(self.host, self.port))
+        self.connected = self.fetchConnected()
+
+
+    def getCurrBlockChain(self):
+        conn = httplib.HTTPConnection("{}".format(self.bootsDist))
         conn.request("GET","/getBlockChain")
         res = conn.getresponse()
         print(res.read())
 
-    def broadcast(self, msg):
+    def broadcast(self, method, url):
         for connected in self.connected:
             conn = httplib.HTTPConnection("{}".format(connected))
-            conn.request("POST", "/rcvMsg/?msg={}".format(msg))
+            conn.request(method, url.format(connected))
             res = conn.getresponse()
 
     def fetchConnected(self):
-        conn = httplib.HTTPConnection("{}:{}".format(self.host, self.port))
-        conn.request("GET","/getBlockChain")
-        res = conn.getresponse()
+        conn = httplib.HTTPConnection("{}".format(self.bootsDist))
+        conn.request("POST","/newAddress/?address={}".format(self.boots))
+        jsonConnected = conn.getresponse().read()
+        self.connected = json.loads(jsonConnected)
+        print(self.connected)
+
+    def disconnect(self):
+        conn = httplib.HTTPConnection("{}".format(self.bootsDist))
+        conn.request("DELETE","/rmNode/?address={}".format(self.bootsLoc))
+        print(conn.getresponse().read())
+        #TODO: broadcast disconnect to every node
+        broadcast('DELETE', "/rmNode/?address={}")
+
+    def addNode(self, address):
+        if address not in self.connected:
+            self.connected.append(address)
+            print("node {} added".format(address))
+        pass
+
+    def rmNode(self, address):
+        if address in self.connected:
+            self.connected.remove(address)
+            print("node {} removed".format(address))
+        pass
 
 def main():
-    peer = Peer('192.168.1.60', 5000)
-    time.sleep(2)
-    peer.clientSide.broadcast("Coucou")
+    peer = Peer(('192.168.1.25:5000'), ('192.168.1.60:5000'))
+    peer.removeConnection()
     return 0
 
 if __name__ == "__main__":
