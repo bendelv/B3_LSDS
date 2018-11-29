@@ -49,7 +49,9 @@ the reference paper the amount of work is exponential w.r.t the number of 0s.
 - [x] implement serialization
 
 ### 1.4.2 TODO unit Tests
+
 List of all the unit test we need to do
+
 #### 1.4.3 Blockchain
 
 - try adding element and check validity
@@ -60,7 +62,7 @@ List of all the unit test we need to do
 
 # 2. Broadcast system
 
-  *Broadcast a new key/value to all users which update buffer. Create merkel tree at time t,
+* Broadcast a new key/value to all users which update buffer. Create merkel tree at time t,
    how to know if all users mine the same block? Consensus, which one?
 
 ## 2.1 Todo
@@ -73,3 +75,23 @@ List of all the unit test we need to do
 6. Implement API. (Alex)
 7. ~~Add timestamp to each transaction to know which key is the oldest.~~
 8. Table containing key values (but how to protect it from hacker)
+
+# 3. Network
+
+## 3.1 Transactions
+
+  - put(k, v), broadcast transaction
+  - when new block, consensus on block to mine.
+  - transmit mined block.
+
+## 3.2 Connection
+
+  - add new address to bootstrap server.
+  - broadcast new address.
+  - broadcast blockChain and current transactionBuffer if miner to new peer.
+
+## 3.3 Retrieve
+
+  - get local from local version of blockchain.
+
+# 4. Consensus
