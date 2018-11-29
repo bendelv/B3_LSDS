@@ -3,36 +3,22 @@ import http.client as httplib
 from threading import Thread
 import time
 
-app = Flask(__name__)
-
 
 class simpletP2P(object):
+
     def __init__(self, host, port):
-        server = Thread(target = launchServer, args = (host, port))
+        self.app = Flask(__name__)
+        self.app.add_url_rule('/', 'coucou', self.coucou)
+        server = Thread(target = self.launchServer, args = (host, port))
         server.start()
         time.sleep(2)
-        conn = httplib.HTTPConnection("{}:{}".format(host, port))
-        conn.request("GET","/connectedUsers")
-        res = conn.getresponse()
-        print(res.read())
-        conn.request("GET","/niqueTaMereBen")
-        res = conn.getresponse()
-        print(res.read())
 
-    @app.route('/connectedUsers')
-    def index():
-        return 'Hello world'
-
-    def coucou():
-        return 'coucou'
-
-    @app.route('/niqueTaMereBen')
-    def YES():
-        return 'bien joue'
+    def coucou(self):
+        return "coucou"
 
 
-def launchServer(host, port):
-    app.run(debug=True, use_reloader=False, host=host, port=port)
+    def launchServer(self, host, port):
+        self.app.run(debug=True, use_reloader=False, host=host, port=port)
 
 
 def main():
