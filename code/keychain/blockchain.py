@@ -288,7 +288,7 @@ class MerkleTree:
     def buildMT(self, transactions):
         #first we sort the merkleTree
         transactions = sorted(transactions, key=attrgetter('_key'))
-        transactions= sorted(transactions, key=attrgetter('_timestamp'), reverse=True)
+        transactions = sorted(transactions, key=attrgetter('_timestamp'), reverse=True)
         to_process = Queue()
         jump_next = False
         for i, transaction in enumerate(transactions):
@@ -488,6 +488,7 @@ class Block:
 
     def is_inside(self, key, get=False, all=None):
         return self._transactions.is_inside(key, get, all)
+
 
 class Blockchain:
     def __init__(self, bootstrap=None, difficulty=None, blocks=None, transactionBuffer=None):
