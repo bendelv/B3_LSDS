@@ -48,36 +48,28 @@ from threading import Timer
 import threading
 import json
 
+from flask import Flask, request
+import http.client as httplib
+from threading import Thread
+import time
+from threading import Timer
+import threading
+import json
+
 class App(object):
     def __init__(self, host, port):
-        server = Thread(target = self.launchServer, args = (host, port))
+        self.host = host
+        self.port = port
+        self.app = Flask(__name__)
+
+    def launchServer(self):
+        server = Thread(target = self.launchServerNow, args =[])
         server.start()
-        self.alive = []
-        self.suspects = []
-        self.process = []
         time.sleep(1)
 
-    def launchServer(self, host, port):
-        self.app = Flask(__name__)
-        self.app.add_url_rule('/', 'home', self.ping, methods=['GET', 'POST'])
-        self.app.add_url_rule('/aliveSuspectsProcess/', 'status', self.status, methods=['GET', 'POST'])
-        self.app.run(debug=False, use_reloader=False, host=host, port=port)
+    def launchServerNow(self):
+        self.app.run(debug=False, use_reloader=False, host=self.host, port=self.port)
 
-    def status(self):
-        if request.method == "POST":
-            dict = request.get_json()
-            self.alive = dict['alive']
-            self.suspects = dict['suspects']
-            self.process = dict['process']
-        # optimization, implement nodes as a dict for a lookup in O(1) instead
-        # of O(n), OKAY here as we assume a small amount of nodes
-        ulA = "<ul>" + "\n".join(["<li>" + x + "</li>" for x in self.alive])
-        ulS = "<ul>" + "\n".join(["<li>" + x + "</li>" for x in self.suspects])
-        ulP = "<ul>" + "\n".join(["<li>" + x + "</li>" for x in self.process])
-        return "<h1>alive</h1>" + ulA + "<h1>Suspects</h1>" + ulS + "<h1>Process</h1>" + ulP
-
-    def ping(self):
-        return "PING PAGE"
 
 class BroadCast:
     def __init__(self, peer_list):
@@ -91,17 +83,13 @@ class BroadCast:
 
 
 class FailurDetector(object):
-    def __init__(self, own, alive, suspected, perfectLink, timeout):
-        constructor = Thread(target = self.constructor, args =[own,
-                                                               alive,
-                                                               suspected,
-                                                               perfectLink,
-                                                               timeout])
-        constructor.start()
+    def __init__(self, own, alive, suspected, timeout, server):
 
-    def constructor(self, own, alive, suspected, perfectLink, timeout):
+        server.app.add_url_rule('/aliveSuspectsProcess/', 'status', self.status, methods=['GET'])
+        server.app.add_url_rule('/', 'home', self.ping, methods=['GET', 'POST'])
+        server.launchServer()
         self.own = own
-        self.pl = perfectLink
+        self.pl = PerfectLink()
         self.alive = alive.copy()
         self.alive.remove(self.own)
         self.process = alive.copy()
@@ -109,10 +97,22 @@ class FailurDetector(object):
         self.suspected = suspected
         self.timeout = timeout
         self.t = Timer(self.timeout, self.timeoutCallback)
-        self.lock = threading.Lock()
         self.t.start()
-        self.t.join()
-        pass
+
+    def ping(self):
+        return "PING PAGE"
+
+    def status(self):
+        print(self.alive)
+        print(self.suspected)
+        print(self.process)
+        # optimization, implement nodes as a dict for a lookup in O(1) instead
+        # of O(n), OKAY here as we assume a small amount of nodes
+        title = "<h1> Status of the perfect detectors </h1>"
+        ulA = "<ul>" + "\n".join(["<li>" + x + "</li>" for x in self.alive]) + "</ul>"
+        ulS = "<ul>" + "\n".join(["<li>" + x + "</li>" for x in self.suspected]) + "</ul>"
+        ulP = "<ul>" + "\n".join(["<li>" + x + "</li>" for x in self.process]) + "</ul>"
+        return title + "<h2>alive</h2>" + ulA + "<h2>Suspects</h2>" + ulS + "<h2>Process</h2>" + ulP
 
     def add_node(self, node):
         self.process.append(node)
@@ -126,14 +126,9 @@ class FailurDetector(object):
             self.suspect.remove[node]
 
     def timeoutCallback(self):
-        status = Thread(target = self.send_status, args =[None])
-        status.start()
         if len(list(set(self.alive) & set(self.suspected))) == 0:
             self.timeout += 1
         for p in self.process:
-            restore = None
-            suspect = None
-            restore = None
             if (p not in self.alive) and (p not in self.suspected):
                 self.suspected.append(p)
             elif p in self.alive and p in self.suspected:
@@ -145,7 +140,6 @@ class FailurDetector(object):
         self.t = Timer(self.timeout, self.timeoutCallback)
         self.t.start()
         pass
-
     # own sends heartBeat request to process
     def send_heartbeat_request(self, own, process):
         res, _, _, _ = self.pl.send(own, "GET", "/", process)
@@ -153,7 +147,6 @@ class FailurDetector(object):
             #own delivered request to process
             self.deliver_heartbeat_request(process, own)
         pass
-
     # own send heartBeat reply to process
     def send_heartbeat_reply(self, own, process):
         res, _, _, _ = self.pl.send(own, "POST", "/", process)
@@ -161,27 +154,17 @@ class FailurDetector(object):
             #own delivered request to process
             self.deliver_heartbeat_reply(process, own)
         pass
-
     # process delivered heartBeat request to own
     def deliver_heartbeat_request(self, own, process):
         #own sends hearbeat reply to process
         self.send_heartbeat_reply(own, process)
         pass
-
     # process delivered heartbeat reply to own
     def deliver_heartbeat_reply(self, own, process):
         if process not in self.alive:
             self.alive.append(process)
         pass
 
-    def send_status(self, args):
-        dict = {}
-        dict['alive'] = self.alive
-        dict['suspects'] = self.suspected
-        dict['process'] = self.process
-        urlArg = json.dumps(dict)
-        url = "/aliveSuspectsProcess/"
-        res, _, _, _ = self.pl.send(self.own, "POST", url, self.own, urlArg, {'Content-type': 'application/json'})
 
 class PerfectLink(object):
     def __init__(self):
@@ -210,10 +193,12 @@ class PerfectLink(object):
         else:
             return None, None, None, None
 
+
+
 def main():
     print("ADD NODE TIME")
-    process = ["192.168.1.25:5000", "192.168.1.25:5001", "192.168.1.25:5002"]
-    app2 = App("192.168.1.25", "5002")
+    process = ["10.9.175.1:5000", "10.9.175.1", "10.9.175.1:5002"]
+    app2 = App("10.9.175.1", "5002")
     pl2 = PerfectLink()
     f2 = FailurDetector(process[2], process, [], pl2, 5)
 
