@@ -42,7 +42,7 @@ the reference paper the amount of work is exponential w.r.t the number of 0s.
 
 - [x] implement search in the tree by adding min and max prefix to merkleTreeNodes.
 - [x] Verify existence travel through min max prefixes.
-- [ ] __create one abstract class which will be used in treenoed/leaf and block__ (Is this really necessary)
+- [x] __create one abstract class which will be used in treenoed/leaf and block__ (Is this really necessary)
 - [x] look for dumping in json.
 - [x] change compute hash to use json version, reduce number of important variables in json dumping for hash nor for serialization
 - [x] solve issuie with first prefix.
