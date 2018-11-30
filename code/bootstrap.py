@@ -28,12 +28,15 @@ class Bootstrap(object):
         # of O(n), OKAY here as we assume a small amount of nodes
         if address not in self.nodes:
             self.nodes.append(address)
+            print(self.nodes)
+
         return json.dumps(self.nodes)
 
     def remove_node(self):
         address = request.args.get('address', '')
         if address in self.nodes:
             self.nodes.remove(address)
+            print(self.nodes)
         return "node removed"
 
     def send_nodes(self):
@@ -43,7 +46,7 @@ class Bootstrap(object):
         print(res.read())
 
 def main():
-    b = Bootstrap("192.168.1.25","5000")
+    b = Bootstrap("192.168.1.50","8000")
 
 if __name__ == "__main__":
     main()
