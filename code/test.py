@@ -2,6 +2,48 @@ from flask import Flask, request
 import http.client as httplib
 from threading import Thread
 import time
+
+BootstrapAdd = "192.168.1.25:5000"
+
+'''
+conn = httplib.HTTPConnection(BootstrapAdd)
+conn.request("POST",'/newAddress/?address=someAdd')
+res = conn.getresponse()
+print(res.read())
+conn = httplib.HTTPConnection(BootstrapAdd)
+conn.request("POST",'/newAddress/?address=someAdd4')
+res = conn.getresponse()
+print(res.read())
+conn = httplib.HTTPConnection(BootstrapAdd)
+conn.request("POST",'/newAddress/?address=someAdd1')
+res = conn.getresponse()
+print(res.read())
+conn = httplib.HTTPConnection(BootstrapAdd)
+conn.request("POST",'/newAddress/?address=someAdd3')
+res = conn.getresponse()
+print(res.read())
+input()
+
+conn = httplib.HTTPConnection(BootstrapAdd)
+'''
+#conn.request("DELETE",'/rmAddress/?address=someAdd1')
+'''
+res = conn.getresponse()
+print(res.read())
+
+input()
+conn = httplib.HTTPConnection(BootstrapAdd)
+'''
+#conn.request("DELETE",'/rmAddress/?address=someAdd1')
+'''
+res = conn.getresponse()
+print(res.read())
+'''
+
+from flask import Flask, request
+import http.client as httplib
+from threading import Thread
+import time
 from threading import Timer
 import threading
 import json
@@ -29,11 +71,10 @@ class App(object):
             self.process = dict['process']
         # optimization, implement nodes as a dict for a lookup in O(1) instead
         # of O(n), OKAY here as we assume a small amount of nodes
-        title = "<h1> Status of the perfect detectors </h1>"
-        ulA = "<ul>" + "\n".join(["<li>" + x + "</li>" for x in self.alive]) + "</ul>"
-        ulS = "<ul>" + "\n".join(["<li>" + x + "</li>" for x in self.suspects]) + "</ul>"
-        ulP = "<ul>" + "\n".join(["<li>" + x + "</li>" for x in self.process]) + "</ul>"
-        return title + "<h2>alive</h2>" + ulA + "<h2>Suspects</h2>" + ulS + "<h2>Process</h2>" + ulP
+        ulA = "<ul>" + "\n".join(["<li>" + x + "</li>" for x in self.alive])
+        ulS = "<ul>" + "\n".join(["<li>" + x + "</li>" for x in self.suspects])
+        ulP = "<ul>" + "\n".join(["<li>" + x + "</li>" for x in self.process])
+        return "<h1>alive</h1>" + ulA + "<h1>Suspects</h1>" + ulS + "<h1>Process</h1>" + ulP
 
     def ping(self):
         return "PING PAGE"
@@ -170,22 +211,11 @@ class PerfectLink(object):
             return None, None, None, None
 
 def main():
-    app0 = App("192.168.1.25", "5000")
-    app1 = App("192.168.1.25", "5001")
-    pl0 = PerfectLink()
-    pl1 = PerfectLink()
-    process = ["192.168.1.25:5000", "192.168.1.25:5001"]
-    f0 = FailurDetector(process[0], process, [], pl0, 2)
-    f1 = FailurDetector(process[1], process, [], pl1, 5)
-    time.sleep(5)
-    #print("ADD NODE TIME")
+    print("ADD NODE TIME")
     process = ["192.168.1.25:5000", "192.168.1.25:5001", "192.168.1.25:5002"]
-    #app2 = App("192.168.1.25", "5002")
-    #pl2 = PerfectLink()
-    #f2 = FailurDetector(process[2], process, [], pl2, 5, False)
-    f0.add_node(process[2])
-    f1.add_node(process[2])
+    app2 = App("192.168.1.25", "5002")
+    pl2 = PerfectLink()
+    f2 = FailurDetector(process[2], process, [], pl2, 5)
 
 if __name__ == '__main__':
     main()
-    print("EXIT MAIN !!!!")
