@@ -27,8 +27,8 @@ class Server:
 
         address = args
         self.app = Flask(__name__)
-        self.app.add_url_rule('/addNode/', 'addNode', self.addNode, methods = ['POST'])
-        self.app.add_url_rule('/rmNode/', 'rmNode', self.rmNode, methods = ['POST'])
+        self.app.add_url_rule('/addNode', 'addNode', self.addNode, methods = ['POST'])
+        self.app.add_url_rule('/rmNode', 'rmNode', self.rmNode, methods = ['POST'])
 
         self.failDetect= FailureDetector("{}".format(address), ["{}".format(address)], 5, self.app)
 
@@ -89,7 +89,7 @@ def main():
     args = parser.parse_args()
 
     bootsDist = "192.168.1.25:8000"
-    bootsLoc = "192.168.1.25:{}".format(args.bootsloc)
+    bootsLoc = "192.168.1.60:{}".format(args.bootsloc)
     peer = Peer(bootsDist, bootsLoc)
 
     input()
