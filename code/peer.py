@@ -2,13 +2,14 @@ from flask import Flask, request, jsonify
 from argparse import ArgumentParser, ArgumentTypeError
 from threading import Thread
 import http.client as httplib
-from broadcastSys import failureDetector
+from broadcastSys import FailureDetector
 import json
 import time
 
 class Peer:
     def __init__(self, bootsDist, bootsLoc):
         self.serverSide = Server(bootsLoc, self)
+        time.sleep(1)
         self.clientSide = Client(bootsDist, bootsLoc, self)
         pass
 
@@ -29,7 +30,7 @@ class Server:
         self.app.add_url_rule('/addNode/', 'addNode', self.addNode, methods = ['POST'])
         self.app.add_url_rule('/rmNode/', 'rmNode', self.rmNode, methods = ['POST'])
 
-        self.failDetect= failureDetector("{}:{}".format(host, port), ["{}:{}".format(host, port)], 15, self.app)
+        self.failDetect= FailureDetector("{}".format(address), ["{}".format(address)], 5, self.app)
 
         myList = address.split(':')
         host = myList[0]
@@ -38,13 +39,13 @@ class Server:
 
     def addNode(self):
         node = request.get_json()
-        self.failDetect.addNode(node)
+        self.failDetect.add_node(node)
 
         return json.dumps("Nood succefuly added to ___")
 
     def rmNode(self):
         node = request.get_json()
-        self.failDetect.rmNode(node)
+        self.failDetect.rm_node(node)
         return "node removed"
 
 class Client:
@@ -66,7 +67,8 @@ class Client:
         conn = httplib.HTTPConnection("{}".format(self.bootsDist))
         conn.request("POST","/joinP2P", json.dumps(self.bootsLoc),{'content-type': 'application/json'})
         response = conn.getresponse().read()
-        self.peer.serverSide.failDetect.alive = json.loads(response)
+        print(response.decode())
+        self.peer.serverSide.failDetect.alive = json.loads(response.decode())
 
 
     def connectToNodes(self):
@@ -86,8 +88,8 @@ def main():
         default="8001")
     args = parser.parse_args()
 
-    bootsDist = "192.168.1.60:8000"
-    bootsLoc = "192.168.1.60:{}".format(args.bootsloc)
+    bootsDist = "192.168.1.25:8000"
+    bootsLoc = "192.168.1.25:{}".format(args.bootsloc)
     peer = Peer(bootsDist, bootsLoc)
 
     input()
