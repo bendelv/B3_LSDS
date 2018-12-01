@@ -88,7 +88,7 @@ class FailureDetector(Layer):
         self.pl = PerfectLink(flaskApp)
         self.own = own
         self.alive = alive.copy()
-
+        self.now_alive = alive.copy()
         flaskApp.add_url_rule('/FailurDetector/deliver', 'deliver', self.deliver, methods=['POST'])
         flaskApp.add_url_rule('/FailurDetector/see', 'see', self.status, methods=['GET', 'POST'])
         self.process = alive.copy()
@@ -113,7 +113,7 @@ class FailureDetector(Layer):
         return ""
 
     def get_alive(self):
-        return self.alive
+        return self.now_alive
 
     def rm_node(self, process):
         if process in self.process:
@@ -140,8 +140,9 @@ class FailureDetector(Layer):
         return title + timeout + ulA + ulS + ulP
 
     def timeoutCallback(self):
+        self.now_alive = self.alive.copy()
         if len(list(set(self.alive) & set(self.suspected))) == 0:
-            self.timeout += 1
+            self.timeout += 0
         for p in self.process:
             if (p not in self.alive) and (p not in self.suspected):
                 self.suspected.append(p)

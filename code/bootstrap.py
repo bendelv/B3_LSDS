@@ -8,7 +8,6 @@ import time
 class Bootstrap(object):
     def __init__(self, host, port):
         self.own = "{}:{}".format(host, port)
-        self.nodes = []
         server = Thread(target = self.launchServer, args = (host, port))
         server.start()
 
@@ -23,7 +22,7 @@ class Bootstrap(object):
         self.app.run(debug=True, use_reloader=False, host=host, port=port)
 
     def home_page(self):
-        return "<b> Current nodes = {} </b>".format(self.nodes)
+        return "<b> Current nodes = {} </b>".format(self.failDetect.get_alive())
 
     def getConnectedPeers(self):
         list = self.failDetect.get_alive()
