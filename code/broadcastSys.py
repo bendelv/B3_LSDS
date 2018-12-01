@@ -119,9 +119,9 @@ class FailureDetector(Layer):
         if process in self.process:
             self.process.remove(process)
         if process in self.alive:
-            self.suspected.remove(process)
-        if process in self.suspected:
             self.alive.remove(process)
+        if process in self.suspected:
+            self.suspected.remove(process)
 
     def add_node(self, process):
         if process not in self.process:
