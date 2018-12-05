@@ -29,7 +29,7 @@ the reference paper the amount of work is exponential w.r.t the number of 0s.
 ## 1.4 TODO
 
 1. [x] implement single blockchain.
-2. [ ] implement broadcast system. (Beniboy)
+2. [ ] implement broadcast system. (Pierre)
 3. [x] implement set of transaction as merkel tree. (Pierre)
 4. [ ] implement unit tests. (ALL)
 5. [ ] run test with 51% of the network.
@@ -75,9 +75,9 @@ List of all the unit test we need to do
 
 ## 3.2 Connection
 
-  - add new address to bootstrap server.
-  - broadcast new address.
-  - broadcast blockChain and current transactionBuffer if miner to new peer.
+  - [x] add new address to bootstrap server.
+  - [x] broadcast new address.
+  - [ ] broadcast blockChain and current transactionBuffer if miner to new peer.
 
 ## 3.3 Retrieve
 
