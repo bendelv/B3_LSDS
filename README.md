@@ -35,11 +35,11 @@ the reference paper the amount of work is exponential w.r.t the number of 0s.
 - [ ] implement unit tests. (ALL)
 - [ ] run test with 51% of the network.
 
-- try adding element and check validity
-- try altering one transaction
-- try altering hashes
-- try altering multiple transaction
-- dumb and load different level of the blockchain
+- [ ] try adding element and check validity
+- [ ] try altering one transaction
+- [ ] try altering hashes
+- [ ] try altering multiple transaction
+- [ ] dumb and load different level of the blockchain
 
 ### User/high level application
 - [ ] Implement API. (Alex)
