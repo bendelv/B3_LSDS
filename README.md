@@ -45,6 +45,7 @@ the reference paper the amount of work is exponential w.r.t the number of 0s.
 
 - [ ] Implement API. (Alex)
 - [ ] Joint all features (Ben)
+- [ ]
 
 ### Blockchain
 
@@ -57,7 +58,7 @@ the reference paper the amount of work is exponential w.r.t the number of 0s.
 - [x] __create one abstract class which will be used in treenoed/leaf and block__ (Is this really necessary)
 - [x] look for dumping in json.
 - [x] change compute hash to use json version, reduce number of important variables in json dumping for hash nor for serialization
-- [x] solve issuie with first prefix.
+- [x] solve issue with first prefix.
 - [x] implement serialization
 
 ### Consensus
@@ -77,3 +78,11 @@ the reference paper the amount of work is exponential w.r.t the number of 0s.
 
 - [x] Perfect link
 - [x] fail silent detector
+
+##Questions
+### High lvl app
+- should Blockchain and Peer be aware of app? If not, Blockchain ask peer to broadcast new transaction but at the other end, peer can't buffer received transaction..
+
+### Blockchain
+- why transactionBuffer in arg? always empty when init or bootstrap should know about it?
+- At what time we mine ?

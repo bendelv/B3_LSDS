@@ -2,13 +2,17 @@ from flask import Flask, request, jsonify
 from argparse import ArgumentParser, ArgumentTypeError
 from threading import Thread
 import http.client as httplib
-from broadcastSys import FailureDetector
+
 import socket
 import json
 import time
 
+from broadcastSys import FailureDetector
+from application import Transaction
+
 class Peer:
-    def __init__(self, bootsDist, bootsLoc):
+    def __init__(self, blockchain, bootsDist, bootsLoc):
+        self._blockchain = blockchain
         self.serverSide = Server(bootsLoc, self)
         time.sleep(1)
         self.clientSide = Client(bootsDist, bootsLoc, self)
@@ -22,7 +26,6 @@ class Server:
         self.peer = peer
         self.server = Thread(target = self.launchServer, args=[address])
         self.server.start()
-        pass
 
     def launchServer(self, args):
 
@@ -30,7 +33,7 @@ class Server:
         self.app = Flask(__name__)
         self.app.add_url_rule('/addNode', 'addNode', self.addNode, methods = ['POST'])
         self.app.add_url_rule('/rmNode', 'rmNode', self.rmNode, methods = ['POST'])
-
+        self.app.add_url_rule('/addTransaction', 'addTransaction', self.addTransaction, methods = ['POST'])
         self.failDetect= FailureDetector("{}".format(address), ["{}".format(address)], 5, self.app)
 
         myList = address.split(':')
@@ -49,6 +52,12 @@ class Server:
         self.failDetect.rm_node(node)
         return "node removed"
 
+    #To be tested when broadcast available
+    def addTransaction(self):
+        transaction = request.get_json()
+        transaction = Transaction.fromJsonDict(json.loads(transaction))
+        peer._blockchain.loc_add_transaction(transaction)
+
 class Client:
     def __init__(self, bootsDist, bootsLoc, peer):
         self.bootsDist = bootsDist
@@ -63,6 +72,10 @@ class Client:
             if connected != self.bootsLoc:
                 conn = httplib.HTTPConnection("{}".format(connected))
                 conn.request(method, url, jsonObj)
+
+    def broadcastTransaction():
+        #TODO when broadcast available
+        pass
 
     def contactDistBoost(self):
         conn = httplib.HTTPConnection("{}".format(self.bootsDist))
@@ -79,7 +92,6 @@ class Client:
         conn = httplib.HTTPConnection("{}".format(self.bootsDist))
         conn.request("DELETE","/rmNode", json.dumps(self.bootsLoc), {'content-type': 'application/json'})
 
-        #TODO: broadcast disconnect to every node
         self.broadcast('DELETE', "/rmNode", json.dumps(self.bootsLoc), {'content-type': 'application/json'})
 
 def main():

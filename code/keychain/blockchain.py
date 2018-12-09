@@ -11,6 +11,7 @@ from operator import attrgetter
 import pickle
 import json
 
+from peer import Peer
 
 class MerkleLeaf:
     def __init__(self, transaction, prefixes=None, nonce=0, hash=None, leaf=True):
@@ -86,7 +87,6 @@ class MerkleLeaf:
                     return all
         else:
             return self._transaction.get_key() == key
-
 
 class MerkleNode:
     def __init__(self, left, right, leftHash=None, rightHash=None, prefixes=None, nonce=None, hash=None):
@@ -243,7 +243,6 @@ class MerkleNode:
                     return False, None
             return self._left.in_tree(key, get, all) or self._right.in_tree(key, get, all)
 
-
 class MerkleTree:
     def __init__(self, transactions=None):
         self._one = False
@@ -354,48 +353,6 @@ class MerkleTree:
     def is_inside(self, key, get=False, all=None):
         return self._tree.in_tree(key, get, all)
 
-
-class Transaction:
-    def __init__(self, origin, key, value, timestamp=time.time()):
-        """A transaction, in our KV setting. A transaction typically involves
-        some key, value and an origin (the one who put it onto the storage).
-        """
-        self._origin = origin
-        self._key = key
-        self._value = value
-        self._timestamp = timestamp
-
-    @classmethod
-    def fromJsonDict(cls, dict):
-        return cls(dict['_origin'], dict['_key'], dict['_value'], dict['_timestamp'])
-
-    def __str__(self):
-        dict = {}
-        dict["Origin"] = self._origin
-        dict["Key"] = self._key
-        dict["Value"] = self._value
-        dict["timestamp"] = self._timestamp
-        return json.dumps(dict, indent = 4)
-
-    def toJson(self):
-        return json.dumps(self, default=lambda o: o.__dict__, indent=4)
-
-    def get_key(self):
-        return self._key
-
-    def get_timestamp(self):
-        return self._timestamp
-
-
-class Peer:
-    def __init__(self, address):
-        """Address of the peer.
-
-        Can be extended if desired.
-        """
-        self._address = address
-
-
 class Block:
     def __init__(self, timestamp, transactions, previousHash = "", nonce=None, transactionsHash=None, hash=None, notrans=None):
         """Describe the properties of a block."""
@@ -489,28 +446,28 @@ class Block:
     def is_inside(self, key, get=False, all=None):
         return self._transactions.is_inside(key, get, all)
 
-
 class Blockchain:
-    def __init__(self, bootstrap=None, difficulty=None, blocks=None, transactionBuffer=None):
-        """The bootstrap address serves as the initial entry point of
+    def __init__(self, application, difficulty=None, blocks=None, transactionBuffer=None):
+        """
+        The bootstrap address serves as the initial entry point of
         the bootstrapping procedure. In principle it will contact the specified
         addres, download the peerlist, and start the bootstrapping procedure.
         """
+
+        self._peer = Peer(self, application.bootstrap, application.bootsloc)
+
         # Initialize the properties.
         self._difficulty = difficulty
+
         if blocks is None:
             self._blocks = [self._add_genesis_block()]
         else:
             self._blocks = blocks
+
         if transactionBuffer is None:
             self._transactionBuffer = []
         else:
             self._transactionBuffer = transactionBuffer
-        #self._peers = []
-
-
-        # Bootstrap the chain with the specified bootstrap address.
-        #self._bootstrap(bootstrap)
 
     @classmethod
     def fromJsonDict(cls, dict):
@@ -543,30 +500,28 @@ class Blockchain:
         genBlock = Block(time.time(), [genTrans], "0")
         return genBlock
 
-    def _bootstrap(self, address):
-        """Implements the bootstrapping procedure."""
-        peer = Peer(address)
-        raise NotImplementedError
-
     def difficulty(self):
         """Returns the difficulty level."""
         return self._difficulty
 
+    def loc_add_transaction(transaction):
+        self._transactionBuffer.append(transaction)
+
     def add_transaction(self, transaction):
         """Adds a transaction to your current list of transactions,
         and broadcasts it to your Blockchain network.
-
         If the `mine` method is called, it will collect the current list
         of transactions, and attempt to mine a block with those.
         """
-        # TODO broadcasts the buffer
-        self._transactionBuffer.append(transaction)
+
+        self._peer.clientSide.broadcastTransaction(transaction)
+        self.loc_add_transaction(transaction)
 
     def mine(self):
         """Implements the mining procedure."""
         #We should block any procces attemding to write a new transaction in the
         # transactions set.
-        print('Statr mining new block...')
+        print('Start mining new block...')
         newBlock = Block(time.time(), self._transactionBuffer.copy())
         self._transactionBuffer = []
         newBlock.set_previous_hash(self.last_element().get_hash())

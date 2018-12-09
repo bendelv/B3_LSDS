@@ -5,7 +5,7 @@ NB: Feel free to extend or modify.
 """
 
 import argparse
-from peer import Peer
+from keychain import Blockchain
 
 class Callback:
     def __init__(self, transaction, chain):
@@ -20,15 +20,47 @@ class Callback:
         """Polls the blockchain to check if the data is available."""
         raise NotImplementedError
 
+class Transaction:
+    def __init__(self, origin, key, value, timestamp=time.time()):
+        """
+        A transaction, in our KV setting. A transaction typically involves
+        some key, value and an origin (the one who put it onto the storage).
+        """
+        self._origin = origin
+        self._key = key
+        self._value = value
+        self._timestamp = timestamp
+
+    @classmethod
+    def fromJsonDict(cls, dict):
+        return cls(dict['_origin'], dict['_key'], dict['_value'], dict['_timestamp'])
+
+    def __str__(self):
+        dict = {}
+        dict["Origin"] = self._origin
+        dict["Key"] = self._key
+        dict["Value"] = self._value
+        dict["timestamp"] = self._timestamp
+        return json.dumps(dict, indent = 4)
+
+    def toJson(self):
+        return json.dumps(self, default=lambda o: o.__dict__, indent=4)
+
+    def get_key(self):
+        return self._key
+
+    def get_timestamp(self):
+        return self._timestamp
 
 class Application:
-    def __init__(self, bootstrap, miner, difficulty):
+    def __init__(self, bootstrap, bootsloc, miner, difficulty):
         """Allocate the backend storage of the high level API, i.e.,
         your blockchain. Depending whether or not the miner flag has
         been specified, you should allocate the mining process.
         """
-        self._peer = Peer(bootstrap)
-        self._blockchain = Blockchain()
+        self._bootsloc = bootsloc
+        self._bootstrap = bootstrap
+        self._blockchain = Blockchain(self._peer, self, difficulty)
 
     def put(self, key, value, block=True):
         """Puts the specified key and value on the Blockchain.
@@ -36,9 +68,9 @@ class Application:
         The block flag indicates whether the call should block until the value
         has been put onto the blockchain, or if an error occurred.
         """
-        raise NotImplementedError
-        transaction = Transaction(...)
+        transaction = Transaction(self._bootsloc, key, value)
         self._blockchain.add_transaction(self, transaction)
+
         callback = Callback(transaction, self._blockchain)
         if block:
             callback.wait()
@@ -52,62 +84,12 @@ class Application:
         or implement some indexing schemes if you would like to do something
         more efficient.
         """
-        raise NotImplementedError
+        value = self._blockchain.is_inside(key, True)
+        return value
 
     def retrieve_all(self, key):
         """Retrieves all values associated with the specified key on the
         complete blockchain.
         """
-        raise NotImplementedError
-
-
-def allocate_application(arguments):
-    application = Application(
-        bootstrap=arguments.bootstrap,
-        miner=arguments.miner,
-        difficulty=arguments.difficulty)
-
-    return application
-
-
-def parse_arguments():
-    parser = argparse.ArgumentParser(
-        "KeyChain - An overengineered key-value store "
-        "with version control, powered by fancy linked-lists.")
-
-    parser.add_argument("--miner", type=bool, default=False, nargs='?',
-                        const=True, help="Starts the mining procedure.")
-    parser.add_argument("--bootstrap", type=str, default=None,
-                        help="Sets the address of the bootstrap node.")
-    parser.add_argument("--difficulty", type=int, default=5,
-                        help="Sets the difficulty of Proof of Work, only has "
-                             "an effect with the `--miner` flag has been set.")
-    return arguments
-
-def main(arguments):
-    app = allocate_application(arguments)
-
-    # Adding a key-value pair to the storage.
-    key = "info8002"
-    value = "fun"
-    callback = app.put(key, value, block=False)
-
-    # Depending on how fast your blockchain is,
-    # this will return a proper result.
-    print(app.retrieve(key))
-
-    # Using the callback object,
-    # you can also wait for the operation to be completed.
-    callback.wait()
-
-    # Now the key should be available,
-    # unless a different node `put` a new value.
-    print(app.retrieve(key))
-
-    # Show all values of the key.
-    print(app.retrieve_all(key))
-
-
-if __name__ == "__main__":
-    arguments = parse_arguments()
-    main(arguments)
+        valueList = self._blockchain.is_inside(key, True, [])
+        return valueList
