@@ -32,9 +32,9 @@ the reference paper the amount of work is exponential w.r.t the number of 0s.
 
 ## 4. TODO
 ### Unit test
+
 - [ ] implement unit tests. (ALL)
 - [ ] run test with 51% of the network.
-
 - [ ] try adding element and check validity
 - [ ] try altering one transaction
 - [ ] try altering hashes
@@ -42,15 +42,16 @@ the reference paper the amount of work is exponential w.r.t the number of 0s.
 - [ ] dumb and load different level of the blockchain
 
 ### User/high level application
+
 - [ ] Implement API. (Alex)
 - [ ] Joint all features (Ben)
 
 ### Blockchain
+
 - [x] implement single blockchain.
 - [x] implement set of transaction as merkel tree. (Pierre)
 - [x] Add timestamp to each transaction to know which key is the oldest.
 - [ ] Table containing key values (but how to protect it from hacker)?
-
 - [x] implement search in the tree by adding min and max prefix to merkleTreeNodes.
 - [x] Verify existence travel through min max prefixes.
 - [x] __create one abstract class which will be used in treenoed/leaf and block__ (Is this really necessary)
@@ -62,14 +63,17 @@ the reference paper the amount of work is exponential w.r.t the number of 0s.
 ### Consensus
 
 ### Broadcast
+
 - [ ] implement broadcast system. (Pierre)
 
 ### Network
+
 - [x] add new address to bootstrap server.
 - [x] broadcast new address.
 - [ ] broadcast JSon objects trough broadcast system. (in particular Blockchain, new key/value, list of connected peer)
 - [ ] get local from remote version of blockchain and transmit to Blockchain level
 
 ### Low level features
+
 - [x] Perfect link
 - [x] fail silent detector
