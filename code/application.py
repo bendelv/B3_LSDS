@@ -82,8 +82,6 @@ def parse_arguments():
     parser.add_argument("--difficulty", type=int, default=5,
                         help="Sets the difficulty of Proof of Work, only has "
                              "an effect with the `--miner` flag has been set.")
-    arguments, _ = parser.parse_known_args()
-
     return arguments
 
 def main(arguments):
