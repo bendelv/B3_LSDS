@@ -10,6 +10,7 @@ import sys
 from operator import attrgetter
 import pickle
 import json
+from random import randint
 
 
 class MerkleLeaf:
@@ -19,7 +20,10 @@ class MerkleLeaf:
             self._prefixes = prefixes
         else:
             self._prefixes = self.compute_prefixes()
-        self._nonce = nonce
+        if nonce != 0:
+            self.nonce = nonce
+        else:
+            self._nonce = randint(0, 1000)
         if hash is not None:
             self._hash = hash
         else:
@@ -110,7 +114,7 @@ class MerkleNode:
         if nonce is not None:
             self._nonce = nonce
         else:
-            self._nonce = 0
+            self._nonce = randint(0, 1000)
 
         if hash is not None:
             self._hash = hash
@@ -247,7 +251,7 @@ class MerkleNode:
 class MerkleTree:
     def __init__(self, transactions=None):
         self._one = False
-        self._nonce = 0
+        self._nonce = randint(0, 1000)
         if transactions is not None:
             if len(transactions) > 1:
                 self._tree = self.buildMT(transactions.copy())
@@ -419,7 +423,7 @@ class Block:
         if nonce is not None:
             self._nonce = nonce
         else:
-            self._nonce = 0
+            self._nonce = randint(0, 1000)
 
         if hash is not None:
             self._hash = hash
