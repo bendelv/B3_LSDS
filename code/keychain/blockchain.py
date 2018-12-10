@@ -65,6 +65,7 @@ class MerkleLeaf:
 
     def mine(self, difficulty):
         print("Start Mining leaf...")
+        self._nonce = randint(0, 1000)
         while self._hash[0:difficulty] != "0"*difficulty:
             self._nonce += 1
             self._hash = self.compute_hash()
@@ -195,6 +196,7 @@ class MerkleNode:
         print("Right node mined")
         self._leftHash = self._left.get_hash()
         self._rightHash = self._right.get_hash()
+        self._nonce = randint(0, 1000)
         while self._hash[0:difficulty] != "0"*difficulty:
             self._nonce += 1
             self._hash = self.compute_hash()
@@ -340,6 +342,7 @@ class MerkleTree:
         print('Start mining tree...')
         self._tree.mine(difficulty)
         print('tree mined')
+        self._nonce = randint(0, 1000)
         while self._hash[0:difficulty] != "0"*difficulty:
             self._nonce += 1
             self._hash = self.compute_hash()
@@ -475,6 +478,7 @@ class Block:
         print("Strat mining transactions...")
         self._transactions.mine(difficulty)
         print("Transactions mined")
+        self._nonce = randint(0, 1000)
         while self._hash[0:difficulty] != "0"*difficulty:
             self._nonce += 1
             self._hash = self.compute_hash()
