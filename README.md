@@ -43,7 +43,7 @@ the reference paper the amount of work is exponential w.r.t the number of 0s.
 
 ### User/high level application
 
-- [ ] Implement API. (Alex)
+- [ ] Implement API. (Ben)
 - [ ] Joint all features (Ben)
 - [ ]
 
@@ -85,4 +85,5 @@ the reference paper the amount of work is exponential w.r.t the number of 0s.
 
 ### Blockchain
 - why transactionBuffer in arg? always empty when init or bootstrap should know about it?
+---> Take the H key of the each node on the network, make the esperance and retrieve the blockchain and the buffer of one of the node in the esperance 
 - At what time we mine ?
