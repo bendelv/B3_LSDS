@@ -469,6 +469,18 @@ class Blockchain:
         else:
             self._transactionBuffer = transactionBuffer
 
+        if application.miner = True:
+            MiningThread = Thread(target = self.lauchMining, args = )
+
+    def lauchMining():
+        while True:
+            #mine block
+
+            #if H found broadcast
+            #at the same time listen server to know if other found H block
+
+            #consensus on new block to hash
+
     @classmethod
     def fromJsonDict(cls, dict):
         difficulty = dict['_difficulty']

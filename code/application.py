@@ -60,6 +60,7 @@ class Application:
         """
         self._bootsloc = bootsloc
         self._bootstrap = bootstrap
+        self._miner = miner
         self._blockchain = Blockchain(self._peer, self, difficulty)
 
     def put(self, key, value, block=True):
