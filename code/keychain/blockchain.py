@@ -10,6 +10,7 @@ import sys
 from operator import attrgetter
 import pickle
 import json
+from random import randint
 
 from peer import Peer
 
@@ -20,7 +21,10 @@ class MerkleLeaf:
             self._prefixes = prefixes
         else:
             self._prefixes = self.compute_prefixes()
-        self._nonce = nonce
+        if nonce != 0:
+            self.nonce = nonce
+        else:
+            self._nonce = randint(0, 1000)
         if hash is not None:
             self._hash = hash
         else:
@@ -62,6 +66,7 @@ class MerkleLeaf:
 
     def mine(self, difficulty):
         print("Start Mining leaf...")
+        self._nonce = randint(0, 1000)
         while self._hash[0:difficulty] != "0"*difficulty:
             self._nonce += 1
             self._hash = self.compute_hash()
@@ -110,7 +115,7 @@ class MerkleNode:
         if nonce is not None:
             self._nonce = nonce
         else:
-            self._nonce = 0
+            self._nonce = randint(0, 1000)
 
         if hash is not None:
             self._hash = hash
@@ -191,6 +196,7 @@ class MerkleNode:
         print("Right node mined")
         self._leftHash = self._left.get_hash()
         self._rightHash = self._right.get_hash()
+        self._nonce = randint(0, 1000)
         while self._hash[0:difficulty] != "0"*difficulty:
             self._nonce += 1
             self._hash = self.compute_hash()
@@ -246,7 +252,7 @@ class MerkleNode:
 class MerkleTree:
     def __init__(self, transactions=None):
         self._one = False
-        self._nonce = 0
+        self._nonce = randint(0, 1000)
         if transactions is not None:
             if len(transactions) > 1:
                 self._tree = self.buildMT(transactions.copy())
@@ -335,6 +341,7 @@ class MerkleTree:
         print('Start mining tree...')
         self._tree.mine(difficulty)
         print('tree mined')
+        self._nonce = randint(0, 1000)
         while self._hash[0:difficulty] != "0"*difficulty:
             self._nonce += 1
             self._hash = self.compute_hash()
@@ -376,7 +383,7 @@ class Block:
         if nonce is not None:
             self._nonce = nonce
         else:
-            self._nonce = 0
+            self._nonce = randint(0, 1000)
 
         if hash is not None:
             self._hash = hash
@@ -428,6 +435,7 @@ class Block:
         print("Strat mining transactions...")
         self._transactions.mine(difficulty)
         print("Transactions mined")
+        self._nonce = randint(0, 1000)
         while self._hash[0:difficulty] != "0"*difficulty:
             self._nonce += 1
             self._hash = self.compute_hash()
