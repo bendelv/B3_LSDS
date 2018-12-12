@@ -364,6 +364,7 @@ class Block:
     def __init__(self, timestamp, transactions, previousHash = "", nonce=None, transactionsHash=None, hash=None, notrans=None):
         """Describe the properties of a block."""
         self._timestamp = timestamp
+
         if notrans is None:
             if transactions is None:
                 self._transactions = transactions
@@ -390,6 +391,8 @@ class Block:
         else:
             self._hash = self.compute_hash()
 
+        self.blockReceived = None
+
     @classmethod
     def fromJsonDict(cls, dict):
         notrans = dict['_notrans']
@@ -407,7 +410,7 @@ class Block:
     def __str__(self):
         dict = {}
         dict['timestamp'] = self._timestamp
-        dict['transactuions_hash'] = self._transactionsHash
+        dict['transactions_hash'] = self._transactionsHash
         dict['nonce'] = self._nonce
         dict['previousHash'] = self._previousHash
         return json.dumps(dict, indent = 4)
@@ -432,17 +435,16 @@ class Block:
         return hex_dig
 
     def mine(self, difficulty):
-        print("Strat mining transactions...")
+        """
+        print("Start mining transactions...")
         self._transactions.mine(difficulty)
         print("Transactions mined")
-        self._nonce = randint(0, 1000)
-        while self._hash[0:difficulty] != "0"*difficulty:
+        """
+
+        "self._nonce = randint(0, 1000)"
+        while self._hash[0:difficulty] != "0"*difficulty and self.blockReceived == None:
             self._nonce += 1
             self._hash = self.compute_hash()
-
-    def proof(self):
-        """Return the proof of the current block."""
-        raise NotImplementedError
 
     def transactions(self):
         """Returns the list of transactions associated with this block."""
@@ -463,7 +465,7 @@ class Blockchain:
         """
 
         self._peer = Peer(self, application.bootstrap, application.bootsloc)
-
+        # Initialize blockchain and transactionBuffer HERE
         # Initialize the properties.
         self._difficulty = difficulty
 
@@ -477,17 +479,11 @@ class Blockchain:
         else:
             self._transactionBuffer = transactionBuffer
 
+        self._newBlock = None
+
         if application.miner = True:
-            MiningThread = Thread(target = self.lauchMining, args = )
-
-    def lauchMining():
-        while True:
-            #mine block
-
-            #if H found broadcast
-            #at the same time listen server to know if other found H block
-
-            #consensus on new block to hash
+            consensusThread = Thread(target = self.lauchMining, args = [])
+            consensusThread.start()
 
     @classmethod
     def fromJsonDict(cls, dict):
@@ -537,17 +533,50 @@ class Blockchain:
         self._peer.clientSide.broadcastTransaction(transaction)
         self.loc_add_transaction(transaction)
 
+    def lauchMining():
+        while True:
+            #mine block
+            block_found = self.mine()
+            #if H found broadcast
+            if block_found != None:
+                self._peer.broadcast_foundBlock(block_found)
+                self._blocks.append(block_found)
+                self._newBlock = None
+            #at the same time listen server to know if other found H block
+            else:
+                if self.get_blockReceived().is_valid():
+                    self._blocks.append(block_found)
+                    self._newBlock = None
+                else:
+                    print("Block received non valid..")
+
     def mine(self):
         """Implements the mining procedure."""
         #We should block any procces attemding to write a new transaction in the
         # transactions set.
-        print('Start mining new block...')
-        newBlock = Block(time.time(), self._transactionBuffer.copy())
-        self._transactionBuffer = []
-        newBlock.set_previous_hash(self.last_element().get_hash())
-        newBlock.mine(self._difficulty)
-        self._blocks.append(newBlock)
-        print('Block minied')
+        if self._newBlock == None:
+            print('Start mining new block...')
+            self._newBlock = Block(time.time(), self._transactionBuffer.copy())
+            self._transactionBuffer = []
+            newBlock.set_previous_hash(self.last_element().get_hash())
+
+        else:
+            print('Resume block mining...')
+
+        self._newBlock.mine(self._difficulty)
+
+        if self._newBlock.blockReceived == None:
+            print('Block mined')
+            return newBlock
+
+        else:
+            return None
+
+    def set_blockReceived(self, jsonBlock):
+        self._newBlock.blockReceived = self.Block.fromJsonDict(jsonBlock)
+
+    def get_blockReceived(self):
+        return self._newBlock.blockReceived
 
     def is_valid(self):
         """Checks if the current state of the blockchain is valid.

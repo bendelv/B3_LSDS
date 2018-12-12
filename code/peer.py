@@ -21,6 +21,9 @@ class Peer:
     def removeConnection(self):
         self.clientSide.disconnect()
 
+    def broadcast_foundBlock(self, block):
+        self.clientSide.broadcast_foundBlock(block)
+
 class Server:
     def __init__(self, address, peer):
         self.peer = peer
@@ -34,6 +37,8 @@ class Server:
         self.app.add_url_rule('/addNode', 'addNode', self.addNode, methods = ['POST'])
         self.app.add_url_rule('/rmNode', 'rmNode', self.rmNode, methods = ['POST'])
         self.app.add_url_rule('/addTransaction', 'addTransaction', self.addTransaction, methods = ['POST'])
+        self.app.add_url_rule('/blockMined', 'blockMined', self.blockMined, methods = ['POST'])
+
         self.failDetect= FailureDetector("{}".format(address), ["{}".format(address)], 5, self.app)
 
         myList = address.split(':')
@@ -58,6 +63,11 @@ class Server:
         transaction = Transaction.fromJsonDict(json.loads(transaction))
         peer._blockchain.loc_add_transaction(transaction)
 
+    def blockMined(self):
+        block = request.get_json()
+        self._blockchain.set_blockReceived(block)
+        pass
+
 class Client:
     def __init__(self, bootsDist, bootsLoc, peer):
         self.bootsDist = bootsDist
@@ -73,10 +83,6 @@ class Client:
                 conn = httplib.HTTPConnection("{}".format(connected))
                 conn.request(method, url, jsonObj)
 
-    def broadcastTransaction():
-        #TODO when broadcast available
-        pass
-
     def contactDistBoost(self):
         conn = httplib.HTTPConnection("{}".format(self.bootsDist))
         conn.request("POST","/joinP2P", json.dumps(self.bootsLoc),{'content-type': 'application/json'})
@@ -87,6 +93,14 @@ class Client:
 
     def connectToNodes(self):
         self.broadcast("POST","/addNode", json.dumps(self.bootsLoc), {'content-type': 'application/json'})
+
+    def broadcastTransaction():
+        #TODO when broadcast available
+        pass
+
+    def broadcast_foundBlock(self, block):
+        
+        pass
 
     def disconnect(self):
         conn = httplib.HTTPConnection("{}".format(self.bootsDist))
