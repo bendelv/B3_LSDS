@@ -53,6 +53,7 @@ class ReliableBroadcast(Layer):
     def __init__(self, own, processes, flaskApp, suscriber, pfd):
         super().__init__(suscriber)
         self.own = own
+        self.pl = PerfectLink(flaskApp)
         self.correct = processes
         self.msg_from = {}
         for p in processes:
@@ -82,12 +83,15 @@ class ReliableBroadcast(Layer):
         dict = {}
         dict['from'] = self.own
         dict['msg'] = message
-        self._broadcast(method, url, dict)
+
+        return self._broadcast(method, url, dict)
 
     def _broadcast(self, method, url, msg):
+        respList = []
         for p in self.correct:
-            self.pl.send(p, method, url, json.dumps(msg))
-        pass
+            respList.append(self.pl.send(p, method, url, json.dumps(msg))
+
+        return respList
 
     def notify(self, msg):
         dict = msg
@@ -110,66 +114,6 @@ class ReliableBroadcast(Layer):
             self.correct.remove(p)
         for msg in self.msg_from[p]:
             self._broadcast(msg['method'], msg['url'], msg['msg'])
-
-
-class BestEffortBroadcast(Layer):
-    def __init__(self, own, processes, flaskApp, suscriber):
-        super().__init__(suscriber)
-        self.own = own
-        self.processes = processes
-        self.pl = PerfectLink(flaskApp)
-        flaskApp.add_url_rule('/beb/deliver', 'beb_delivering', self.deliver, methods=['POST'])
-        flaskApp.add_url_rule('/beb/see', 'beb_see', self.status, methods=['GET', 'POST'])
-
-        self.messages = []
-
-        pass
-
-    def status(self):
-
-        def print_cell(dict):
-            print(dict)
-            p = dict['from']
-            message = json.loads(dict['msg'])
-            view = "<li> Message <ul>"
-            view += "<li><b> Process: </b>{}</li>".format(p)
-            view += "<li><b> Timestamp: </b>{}</li>".format(message['ts'])
-            view += "<li><b> Message: </b>{}</li>".format(message['msg'])
-            view += "</ul></li>"
-            return view
-
-        if request.method == 'POST':
-            dict = request.get_json()
-            self.messages.append(dict)
-            return ""
-        # optimization, implement nodes as a dict for a lookup in O(1) instead
-        # of O(n), OKAY here as we assume a small amount of nodes
-        elif request.method == 'GET':
-
-            title = "<h1> Testpage broadcast</h1>"
-            list = "<h2> Messages recieved</h2>"+ "\n".join([print_cell(x) for x in self.messages])
-            return title + list
-
-    def notify(self, message):
-        pass
-    #trigger functionallity
-    def broadcast(self, method, url, message):
-        for p in self.processes:
-            dict = {}
-            dict['from'] = self.own
-            dict['msg'] = message
-            self.pl.send(p, method, url, json.dumps(dict))
-        pass
-
-    def deliver(self):
-        dict = request.get_json()
-        dict['layer'] = 'beb'
-        self.trigger(dict)
-        return ""
-
-    def rm_node(process):
-        if process in self.processes:
-            self.processes.remove(process)
 
 
 class PerfecFailureDetector(Layer):
@@ -385,9 +329,11 @@ class PerfectLink(Layer):
         try:
             conn = httplib.HTTPConnection(process, timeout=10)
             conn.request(method, url, data,  {'content-type': 'application/json'})
+            response = conn.getresponse().read()
         except:
             return None
-        return conn
+        return (response.decode(), process)
+
     #Process delivered message correctly to own
     def plDeliver(self):
         args = request.args

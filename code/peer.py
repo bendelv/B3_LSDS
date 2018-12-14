@@ -40,7 +40,7 @@ class Server:
         self.app.add_url_rule('/rb/rmNode', 'rmNode', self.rmNode, methods = ['POST'])
         self.app.add_url_rule('/rb/addTransaction', 'addTransaction', self.addTransaction, methods = ['POST'])
         self.app.add_url_rule('/rb/blockMined', 'blockMined', self.blockMined, methods = ['POST'])
-
+        self.app.add_url_rule('/dumpH', 'dumpH', self.dumpH, methods = ['POST'])
 
         myList = address.split(':')
         host = myList[0]
@@ -78,13 +78,6 @@ class Client:
         self.contactDistBoost()
         self.connectToNodes()
 
-    def broadcast(self, method, url, jsonObj, headers):
-
-        for connected in self.peer.pfd.alive:
-            if connected != self.bootsLoc:
-                conn = httplib.HTTPConnection("{}".format(connected))
-                conn.request(method, url, jsonObj)
-
     def contactDistBoost(self):
         conn = httplib.HTTPConnection("{}".format(self.bootsDist))
         conn.request("POST","/joinP2P", json.dumps(self.bootsLoc),{'content-type': 'application/json'})
@@ -94,7 +87,7 @@ class Client:
 
 
     def connectToNodes(self):
-        self.broadcast("POST","/addNode", json.dumps(self.bootsLoc), {'content-type': 'application/json'})
+        self.Peer.bbroadcast("POST","/addNode", json.dumps(self.bootsLoc), {'content-type': 'application/json'})
 
     def broadcastTransaction():
         #TODO when broadcast available
