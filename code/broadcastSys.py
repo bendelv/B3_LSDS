@@ -57,7 +57,6 @@ class ReliableBroadcast(Layer):
         self.msg_from = {}
         for p in processes:
             self.msg_from[p] = []
-        self.beb = BestEffortBroadcast(own, processes, flaskApp, self)
         self.pfd = PerfecFailureDetector(own, processes, 5, flaskApp, self)
         flaskApp.add_url_rule('/rb/see', 'rb_see', self.status, methods=['GET'])
 
@@ -79,36 +78,38 @@ class ReliableBroadcast(Layer):
         list = "<h2> Messages recieved</h2>"+ "\n".join([print_msg(self.msg_from[p], p) for p in self.correct])
         return title + list + self.pfd.status()
 
-    def broadcast(self, msg):
-        self.beb.broadcast('POST', '/beb/deliver', msg)
-        "Send a json object to all connected user"
+    def broadcast(self, method, url, msg):
+        dict = {}
+        dict['from'] = self.own
+        dict['msg'] = message
+        self._broadcast(method, url, dict)
+
+    def _broadcast(self, method, url, msg):
+        for p in self.correct:
+            self.pl.send(p, method, url, json.dumps(msg))
         pass
 
     def notify(self, msg):
-
         dict = msg
-        layer = dict['layer']
-        if layer == 'beb':
-            p = dict['from']
-            message = dict['msg']
-            self.bebHandler(p, message)
-        elif layer == 'pfd':
-            p = dict['process']
-            self.pfdHandler(p)
+        if 'layer' in dict.keys():
+            layer = dict['layer']
+            if layer == 'pfd':
+                p = dict['process']
+                self.pfdHandler(p)
     #upon event beb deliver
-    def bebHandler(self, p, msg):
+    def rbHandler(self, p, method, url, msg):
         if msg not in self.msg_from[p]:
             self.msg_from[p].append(msg)
             msg['layer'] = 'rb'
             self.trigger(msg)
             if p not in self.correct:
-                self.broadcast(msg)
+                self._broadcast(method, url, msg)
     #upon event crash p
     def pfdHandler(self, p):
         if p in self.correct:
             self.correct.remove(p)
         for msg in self.msg_from[p]:
-            self.broadcast(msg['method'], msg['url'], msg['msg'])
+            self._broadcast(msg['method'], msg['url'], msg['msg'])
 
 
 class BestEffortBroadcast(Layer):
