@@ -442,7 +442,7 @@ class Block:
         """
 
         "self._nonce = randint(0, 1000)"
-        while self._hash[0:difficulty] != "0"*difficulty and self.blockReceived == None:
+        while self._hash[0:difficulty] != "0"*difficulty and self.blockReceived is None:
             self._nonce += 1
             self._hash = self.compute_hash()
 
@@ -538,7 +538,7 @@ class Blockchain:
             #mine block
             block_found = self.mine()
             #if H found broadcast
-            if block_found != None:
+            if block_found is not None:
                 self._peer.broadcast_foundBlock(block_found)
                 self._blocks.append(block_found)
                 self._newBlock = None
@@ -554,7 +554,7 @@ class Blockchain:
         """Implements the mining procedure."""
         #We should block any procces attemding to write a new transaction in the
         # transactions set.
-        if self._newBlock == None:
+        if self._newBlock is None:
             print('Start mining new block...')
             self._newBlock = Block(time.time(), self._transactionBuffer.copy())
             self._transactionBuffer = []
@@ -565,7 +565,7 @@ class Blockchain:
 
         self._newBlock.mine(self._difficulty)
 
-        if self._newBlock.blockReceived == None:
+        if self._newBlock.blockReceived is None:
             print('Block mined')
             return newBlock
 

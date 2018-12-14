@@ -37,7 +37,8 @@ class Server:
         self.app.add_url_rule('/addNode', 'addNode', self.addNode, methods = ['POST'])
         self.app.add_url_rule('/rmNode', 'rmNode', self.rmNode, methods = ['POST'])
         self.app.add_url_rule('/addTransaction', 'addTransaction', self.addTransaction, methods = ['POST'])
-        self.app.add_url_rule('/blockMined', 'blockMined', self.blockMined, methods = ['POST'])
+        self.app.add_url_rule('/rb/blockMined', 'blockMined', self.blockMined, methods = ['POST'])
+
 
         self.failDetect= FailureDetector("{}".format(address), ["{}".format(address)], 5, self.app)
 
@@ -65,6 +66,7 @@ class Server:
 
     def blockMined(self):
         block = request.get_json()
+        rb.hander(method, url, block)
         self._blockchain.set_blockReceived(block)
         pass
 
@@ -99,7 +101,7 @@ class Client:
         pass
 
     def broadcast_foundBlock(self, block):
-        
+
         pass
 
     def disconnect(self):
