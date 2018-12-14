@@ -16,6 +16,8 @@ class Peer:
         self.serverSide = Server(bootsLoc, self)
         time.sleep(1)
         self.clientSide = Client(bootsDist, bootsLoc, self)
+        self.pfd = FailureDetector("{}".format(bootsLoc), ["{}".format(bootsLoc)], 5, self.serverSide.app)
+        self.rb = ReliableBroadcast("{}".format(bootsLoc),  ["{}".format(bootsLoc)], self.serverSide.app, None, self.pfd)
         pass
 
     def removeConnection(self):
@@ -34,13 +36,11 @@ class Server:
 
         address = args
         self.app = Flask(__name__)
-        self.app.add_url_rule('/addNode', 'addNode', self.addNode, methods = ['POST'])
-        self.app.add_url_rule('/rmNode', 'rmNode', self.rmNode, methods = ['POST'])
-        self.app.add_url_rule('/addTransaction', 'addTransaction', self.addTransaction, methods = ['POST'])
+        self.app.add_url_rule('/rb/addNode', 'addNode', self.addNode, methods = ['POST'])
+        self.app.add_url_rule('/rb/rmNode', 'rmNode', self.rmNode, methods = ['POST'])
+        self.app.add_url_rule('/rb/addTransaction', 'addTransaction', self.addTransaction, methods = ['POST'])
         self.app.add_url_rule('/rb/blockMined', 'blockMined', self.blockMined, methods = ['POST'])
 
-
-        self.failDetect= FailureDetector("{}".format(address), ["{}".format(address)], 5, self.app)
 
         myList = address.split(':')
         host = myList[0]
@@ -49,13 +49,13 @@ class Server:
 
     def addNode(self):
         node = request.get_json()
-        self.failDetect.add_node(node)
-
+        self.peer.rb.rbHandler('POST', '/rb/addNode', node)
+        self.peer.pfd.add_node(node)
         return json.dumps("Nood succefuly added to ___")
 
     def rmNode(self):
         node = request.get_json()
-        self.failDetect.rm_node(node)
+        self.perr.pfd.rm_node(node)
         return "node removed"
 
     #To be tested when broadcast available
@@ -80,7 +80,7 @@ class Client:
 
     def broadcast(self, method, url, jsonObj, headers):
 
-        for connected in self.peer.serverSide.failDetect.alive:
+        for connected in self.peer.pfd.alive:
             if connected != self.bootsLoc:
                 conn = httplib.HTTPConnection("{}".format(connected))
                 conn.request(method, url, jsonObj)
@@ -90,7 +90,7 @@ class Client:
         conn.request("POST","/joinP2P", json.dumps(self.bootsLoc),{'content-type': 'application/json'})
         response = conn.getresponse().read()
         print(response.decode())
-        self.peer.serverSide.failDetect.alive = json.loads(response.decode())
+        self.peer.pfd.alive = json.loads(response.decode())
 
 
     def connectToNodes(self):
@@ -122,7 +122,7 @@ def main():
     peer = Peer(bootsDist, bootsLoc)
 
     input()
-    print(peer.serverSide.failDetect.alive)
+    print(peer.pfd.alive)
     input()
     peer.removeConnection()
 
