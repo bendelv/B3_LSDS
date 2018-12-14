@@ -50,14 +50,14 @@ class App(object):
 
 
 class ReliableBroadcast(Layer):
-    def __init__(self, own, processes, flaskApp, suscriber):
+    def __init__(self, own, processes, flaskApp, suscriber, pfd):
         super().__init__(suscriber)
         self.own = own
         self.correct = processes
         self.msg_from = {}
         for p in processes:
             self.msg_from[p] = []
-        self.pfd = PerfecFailureDetector(own, processes, 5, flaskApp, self)
+        self.pfd = pfd
         flaskApp.add_url_rule('/rb/see', 'rb_see', self.status, methods=['GET'])
 
     def status(self):
