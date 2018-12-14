@@ -5,6 +5,8 @@ import http.client as httplib
 import json
 import time
 
+#test
+
 class Bootstrap(object):
     def __init__(self, host, port):
         self.own = "{}:{}".format(host, port)
