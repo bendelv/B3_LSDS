@@ -38,7 +38,7 @@ class Server:
         self.app.add_url_rule('/rmNode', 'rmNode', self.rmNode, methods = ['POST'])
         self.app.add_url_rule('/addTransaction', 'addTransaction', self.addTransaction, methods = ['POST'])
         self.app.add_url_rule('/rb/blockMined', 'blockMined', self.blockMined, methods = ['POST'])
-
+        self.app.add_url_rule('/dumpH', 'dumpH', self.dumpH, methods = ['POST'])
 
         self.failDetect= FailureDetector("{}".format(address), ["{}".format(address)], 5, self.app)
 
@@ -78,23 +78,16 @@ class Client:
         self.contactDistBoost()
         self.connectToNodes()
 
-    def broadcast(self, method, url, jsonObj, headers):
-
-        for connected in self.peer.serverSide.failDetect.alive:
-            if connected != self.bootsLoc:
-                conn = httplib.HTTPConnection("{}".format(connected))
-                conn.request(method, url, jsonObj)
-
     def contactDistBoost(self):
         conn = httplib.HTTPConnection("{}".format(self.bootsDist))
         conn.request("POST","/joinP2P", json.dumps(self.bootsLoc),{'content-type': 'application/json'})
         response = conn.getresponse().read()
-        print(response.decode())
+
         self.peer.serverSide.failDetect.alive = json.loads(response.decode())
 
 
     def connectToNodes(self):
-        self.broadcast("POST","/addNode", json.dumps(self.bootsLoc), {'content-type': 'application/json'})
+        self.Peer.bbroadcast("POST","/addNode", json.dumps(self.bootsLoc), {'content-type': 'application/json'})
 
     def broadcastTransaction():
         #TODO when broadcast available
