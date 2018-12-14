@@ -32,25 +32,6 @@ the reference paper the amount of work is exponential w.r.t the number of 0s.
 
 ## 4. TODO
 ### Unit test
-<<<<<<< HEAD
-
-- [ ] implement unit tests. (ALL)
-- [ ] run test with 51% of the network.
-- [ ] try adding element and check validity
-- [ ] try altering one transaction
-- [ ] try altering hashes
-- [ ] try altering multiple transaction
-- [ ] dumb and load different level of the blockchain
-
-### User/high level application
-
-- [ ] Implement API. (Ben)
-- [ ] Joint all features (Ben)
-- [ ]
-
-### Blockchain
-
-=======
 
 - [ ] implement unit tests. (ALL)
 - [ ] run test with 51% of the network.
@@ -67,7 +48,6 @@ the reference paper the amount of work is exponential w.r.t the number of 0s.
 
 ### Blockchain
 
->>>>>>> master
 - [x] implement single blockchain.
 - [x] implement set of transaction as merkel tree. (Pierre)
 - [x] Add timestamp to each transaction to know which key is the oldest.
@@ -81,7 +61,6 @@ the reference paper the amount of work is exponential w.r.t the number of 0s.
 - [x] implement serialization
 
 ### Consensus
-<<<<<<< HEAD
 
 ### Broadcast
 
@@ -105,23 +84,5 @@ the reference paper the amount of work is exponential w.r.t the number of 0s.
 
 ### Blockchain
 - why transactionBuffer in arg? always empty when init or bootstrap should know about it?
----> Take the H key of the each node on the network, make the esperance and retrieve the blockchain and the buffer of one of the node in the esperance 
+---> Take the H key of the each node on the network, make the esperance and retrieve the blockchain and the buffer of one of the node in the esperance
 - At what time we mine ?
-=======
-
-### Broadcast
-
-- [ ] implement broadcast system. (Pierre)
-
-### Network
-
-- [x] add new address to bootstrap server.
-- [x] broadcast new address.
-- [ ] broadcast JSon objects trough broadcast system. (in particular Blockchain, new key/value, list of connected peer)
-- [ ] get local from remote version of blockchain and transmit to Blockchain level
-
-### Low level features
-
-- [x] Perfect link
-- [x] fail silent detector
->>>>>>> master
