@@ -14,6 +14,9 @@ from broadcastSys import PerfectLink
 class Peer:
     def __init__(self, blockchain, bootsDist, bootsLoc):
         self._blockchain = blockchain
+        self.bootsLoc = bootsLoc
+        self.bootsDist = bootsDist
+
         self.serverSide = Server(bootsLoc, self)
         time.sleep(1)
         self.clientSide = Client(bootsDist, bootsLoc, self)

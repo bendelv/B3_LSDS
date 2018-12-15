@@ -37,6 +37,7 @@ class App(object):
         time.sleep(1)
 
     def launchServerNow(self):
+        print(self.host, self.port)
         self.app.run(debug=False, use_reloader=False, host=self.host, port=self.port)
 
     def shutdown(self):
@@ -48,9 +49,18 @@ class App(object):
             raise RuntimeError('Not running with the Werkzeug Server')
         func()
 
+class fakePeer(object):
+    def __init__(self, host, port, alive):
+        self.app = App(host, port)
+        self.bootsLoc = "{}:{}".format(host, port)
+        self.pl = PerfectLink()
+        self.pfd = PerfecFailureDetector(alive, 5, self)
+        #self.rb = ReliableBroadcast("{}".format(bootsLoc),  ["{}".format(bootsLoc)], self.serverSide.app, self)
 
-class ReliableBroadcast(Layer):
-    def __init__(self, own, processes, flaskApp, suscriber, peer):
+        self.app.launchServer()
+
+class ReliableBroadcast():
+    def __init__(self, own, processes, peer):
         super().__init__(suscriber)
         self.own = own
 
@@ -92,7 +102,7 @@ class ReliableBroadcast(Layer):
     def _broadcast(self, method, url, msg):
         respList = []
         for p in self.correct:
-            respList.append(self.pl.send(p, method, url, msg)
+            respList.append(self.pl.send(p, method, url, msg))
 
         return respList
 
@@ -119,18 +129,20 @@ class ReliableBroadcast(Layer):
             self._broadcast(msg['method'], msg['url'], msg['msg'])
 
 
-class PerfecFailureDetector(Layer):
-    def __init__(self, own, alive, timeout, flaskApp, suscriber):
-        super().__init__(suscriber)
-        self.pl = PerfectLink(flaskApp)
-        self.own = own
+class PerfecFailureDetector():
+    def __init__(self, alive, timeout, peer):
+
+        flaskApp = peer.app.app
+        self.pl = peer.pl
+        self.own = peer.bootsLoc
+
         self.process = alive.copy()
         self.alive = alive.copy()
         self.detected = []
         self.now_alive = alive.copy()
 
-        flaskApp.add_url_rule('/FailurDetector/heartbeatRequest', 'heartbeat', self.heartbeatReply, methods=['GET'])
-
+        flaskApp.add_url_rule('/FD/heartbeatRequest', 'heartbeat', self.heartbeatReply, methods=['GET'])
+        flaskApp.add_url_rule('/FD/see', 'status', self.status, methods=['GET'])
         self.timeout = timeout
         self.t = Timer(self.timeout, self.timeoutCallback)
         self.t.start()
@@ -163,17 +175,25 @@ class PerfecFailureDetector(Layer):
         return title + timeout + ulA + ulS + ulP
 
     def heartbeatRequest(self, p):
-        self.alive.remove(p)
-        objAlive = self.peer.pl.send(p, method, url, '', self.timeout -0.05)
-        load = json.loads(objAlive)
+        if p in self.alive:
+            self.alive.remove(p)
+        alive = self.pl.send(p, 'GET', '/FD/heartbeatRequest', '', self.timeout -0.05)
+        if alive is not None:
+            load = json.loads(objAlive)
 
-        if load is True:
-            self.alive.append(p)
+            if load is 'True':
+                self.alive.append(p)
 
     def heartbeatReply(self):
+        print("HERE")
+        list = request.get_json()
+        p = list[1]
+        if p not in self.process:
+            self.add_node(p)
         return json.dumps('True')
 
     def timeoutCallback(self):
+        print("enter callback")
         self.now_alive = self.alive.copy()
         for p in self.detected.copy():
             if p not in self.alive:
@@ -182,8 +202,9 @@ class PerfecFailureDetector(Layer):
         for p in self.process:
             if (p not in self.alive) and (p not in self.detected):
                 self.detected.append(p)
-
+            print('FDP')
             objAlive = Thread(target = self.heartbeatRequest, args = [p])
+            objAlive.start()
 
         self.t = Timer(self.timeout, self.timeoutCallback)
         self.t.start()
@@ -192,136 +213,25 @@ class PerfecFailureDetector(Layer):
         pass
     # own send heartBeat reply to process
 
-class FailureDetector(Layer):
-    def __init__(self, own, alive, timeout, flaskApp):
-        self.pl = PerfectLink(flaskApp)
-        self.own = own
-        self.alive = alive.copy()
-        self.now_alive = alive.copy()
-        flaskApp.add_url_rule('/FailurDetector/deliver', 'deliver', self.deliver, methods=['POST'])
-        flaskApp.add_url_rule('/FailurDetector/see', 'see', self.status, methods=['GET', 'POST'])
-        self.process = alive.copy()
-        self.suspected = {}
-        self.timeout = timeout
-        self.t = Timer(self.timeout, self.timeoutCallback)
-        self.t.start()
-
-        # used for printing
-        self.time = time.time()
-
-    def notify(message):
-        pass
-    #trigger functionallity
-    def deliver(self):
-        dict = request.get_json()
-        # upon event deliver heartbeatRequest
-        if dict['message'] == "request":
-            self.send_heartbeat_reply(dict['to'], dict['from'])
-        # upon event deliver heartbeatReply
-        elif dict['message'] == "reply":
-            self.alive.append(dict['from'])
-
-        return ""
-
-    def get_alive(self):
-        return self.now_alive
-
-    def rm_node(self, process):
-        if process in self.process:
-            self.process.remove(process)
-        if process in self.alive:
-            self.alive.remove(process)
-        if process in self.suspected:
-            del self.suspected[process]
-
-    def add_node(self, process):
-        if process not in self.process:
-            self.process.append(process)
-        if process not in self.alive:
-            self.alive.append(process)
-
-    def status(self):
-        # optimization, implement nodes as a dict for a lookup in O(1) instead
-        # of O(n), OKAY here as we assume a small amount of nodes
-        title = "<h1> Status of the perfect detectors, Timeout {}</h1>".format(self.timeout)
-        timeout = "<h2> Time: {0:.2f}</h2>".format(time.time() - self.time)
-        ulA = "<h2>alive</h2><ul>" + "\n".join(["<li>" + x + "</li>" for x in self.alive]) + "</ul>"
-        ulS = "<h2>Suspects</h2><ul>" + "\n".join(["<li>" + x + "</li>" for x in self.suspected]) + "</ul>"
-        ulP = "<h2>Process</h2><ul>" + "\n".join(["<li>" + x + "</li>" for x in self.process]) + "</ul>"
-        return title + timeout + ulA + ulS + ulP
-
-    def timeoutCallback(self):
-        self.now_alive = self.alive.copy()
-        if len(list(set(self.alive) & set(self.suspected.keys()))) == 0:
-            self.timeout += 0
-        for p in self.process:
-            if (p not in self.alive) and (p not in self.suspected.keys()):
-                self.suspected[p] = 0
-            elif p in self.alive and p in self.suspected.keys():
-                del self.suspected[p]
-            elif p in self.suspected.keys():
-                # Fail stop hypothesis. after 5 non heartbeat request, remove node.
-                self.suspected[p] += 1
-                if self.suspected[p] > 5:
-                    self.rm_node(p)
-                    # trigger upper layers
-                    self.trigger(p)
-            heartBeat = Thread(target = self.send_heartbeat_request, args =[self.own, p])
-            if p in self.alive:
-                self.alive.remove(p)
-            heartBeat.start()
-        self.t = Timer(self.timeout, self.timeoutCallback)
-        self.t.start()
-        # used for printing
-        self.time = time.time()
-        pass
-    # own sends heartBeat request to process
-    def send_heartbeat_request(self, own, process):
-        dict = {}
-        dict['from'] = own
-        dict['to'] = process
-        dict['message'] = 'request'
-        self.pl.send(process, "POST", "/FailurDetector/deliver", json.dumps(dict))
-        pass
-    # own send heartBeat reply to process
-    def send_heartbeat_reply(self, own, process):
-        dict = {}
-        dict['from'] = own
-        dict['to'] = process
-        dict['message'] = 'reply'
-        self.pl.send(process, "POST", "/FailurDetector/deliver", json.dumps(dict))
-        pass
-
-
-class PerfectLink(Layer):
-    def __init__(self, flaskApp):
-        super().__init__(None)
-        flaskApp.add_url_rule('/PerfectLink/',
-                              self.plDeliver,
-                              methods=['POST'])
+class PerfectLink():
+    def __init__(self):
         pass
 
     #send message: message from process: own to process: process
     def send(self, process, method, url, data, timeout=10):
         # TODO handle exceptions like wrong address
-        try:
-            conn = httplib.HTTPConnection(process, timeout)
-            arr = [data, process]
-            conn.request(method, url, json.dumps(arr),  {'content-type': 'application/json'})
-            response = conn.getresponse().read()
-        except:
-            return None
+        #try:
+        print(process)
+        conn = httplib.HTTPConnection(process, timeout)
+        arr = [data, process]
+        print(method)
+        print(url)
+        print(json.dumps(arr))
+        conn.request(method, url, json.dumps(arr),  {'content-type': 'application/json'})
+        response = conn.getresponse().read()
+        #except:
+        return None
         return response.decode()
-
-    #Process delivered message correctly to own
-    def plDeliver(self):
-        args = request.args
-        message = request.get_json()
-        self.trigger(message)
-        return ""
-
-    def notify(self, message):
-        pass
 
 
 def parse_arguments():
@@ -329,30 +239,24 @@ def parse_arguments():
         "KeyChain - An overengineered key-value store "
         "with version control, powered by fancy linked-lists.")
 
-    parser.add_argument("--address", type=str, default="192.168.1.25",
+    parser.add_argument("--address", type=str, default="192.168.1.60",
                         help="ip Address")
-    parser.add_argument("--port", type=str, default="5001",
+    parser.add_argument("--port", type=str, default="5000",
                         help="Port number")
-    arguments, _ = parser.parse_known_args()
 
-    return arguments
+    return parser.parse_args()
 
 
 def main(args):
-    app0 = App("192.168.1.25", "5000")
-    app1 = App("192.168.1.25", "5001")
-    app2 = App("192.168.1.25", "5002")
-    #process = ["192.168.1.25:5000", "192.168.1.25:5001"]
-    process = ["192.168.1.25:5000", "192.168.1.25:5001", "192.168.1.25:5002"]
-    #f0 = PerfecFailureDetector(process[0], process, 2, app0.app, None)
-    #f1 = PerfecFailureDetector(process[1], process, 5, app1.app, None)
-    #f2 = PerfecFailureDetector(process[2], process, 5, app2.app, None)
+
+    alive =["192.168.1.60:5000", "192.168.1.60:5001", "192.168.1.60:5002"]
+    fake_peer = fakePeer(args.address, args.port, alive)
+
+    """
     rb0 = ReliableBroadcast(process[0], process, app0.app, None)
     rb1 = ReliableBroadcast(process[1], process, app1.app, None)
     rb2 = ReliableBroadcast(process[2], process, app2.app, None)
-    app0.launchServer()
-    app1.launchServer()
-    app2.launchServer()
+
     dict = {}
     dict['ts'] = time.time()
     dict['msg'] = "Some broadcasted message 1"
@@ -363,6 +267,7 @@ def main(args):
     dict['ts'] = time.time()
     dict['msg'] = "Some broadcasted message 3"
     rb1.broadcast(dict)
+    """
 
 if __name__ == '__main__':
     arguments = parse_arguments()
