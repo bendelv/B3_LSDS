@@ -56,8 +56,10 @@ class ReliableBroadcast(Layer):
 
         self.correct = processes
         self.msg_from = {}
+
         for p in processes:
             self.msg_from[p] = []
+
         self.pfd = peer.pfd
         self.pl = peer.pl
         flaskApp.add_url_rule('/rb/see', 'rb_see', self.status, methods=['GET'])
@@ -126,28 +128,12 @@ class PerfecFailureDetector(Layer):
         self.alive = alive.copy()
         self.detected = []
         self.now_alive = alive.copy()
-        flaskApp.add_url_rule('/FailurDetector/deliver', 'pfd_delivering', self.deliver, methods=['POST'])
-        flaskApp.add_url_rule('/FailurDetector/see', 'pfd_see', self.status, methods=['GET', 'POST'])
+
+        flaskApp.add_url_rule('/FailurDetector/heartbeatRequest', 'heartbeat', self.heartbeatReply, methods=['GET'])
+
         self.timeout = timeout
         self.t = Timer(self.timeout, self.timeoutCallback)
         self.t.start()
-
-    def notify(self, message):
-        pass
-    #trigger functionallity
-    def deliver(self):
-        dict = request.get_json()
-        # upon event deliver heartbeatRequest
-        if dict['message'] == "request":
-            if dict['from'] not in self.process:
-                self.process.append(dict['from'])
-                self.alive.append(dict['from'])
-            self.send_heartbeat_reply(dict['to'], dict['from'])
-        # upon event deliver heartbeatReply
-        elif dict['message'] == "reply":
-            self.alive.append(dict['from'])
-
-        return ""
 
     def get_alive(self):
         return self.now_alive
@@ -176,44 +162,35 @@ class PerfecFailureDetector(Layer):
         ulP = "<h2>Process</h2><ul>" + "\n".join(["<li>" + x + "</li>" for x in self.process]) + "</ul>"
         return title + timeout + ulA + ulS + ulP
 
+    def heartbeatRequest(self, p):
+        self.alive.remove(p)
+        objAlive = self.peer.pl.send(p, method, url, '', self.timeout -0.05)
+        load = json.loads(objAlive)
+
+        if load is True:
+            self.alive.append(p)
+
+    def heartbeatReply(self):
+        return json.dumps('True')
+
     def timeoutCallback(self):
         self.now_alive = self.alive.copy()
         for p in self.detected.copy():
-            self.rm_node(p)
+            if p not in self.alive:
+                self.rm_node(p)
+
         for p in self.process:
             if (p not in self.alive) and (p not in self.detected):
                 self.detected.append(p)
-                if self.suscriber is not None:
-                    dict = {}
-                    dict['process'] = p
-                    dict['layer'] = 'pfd'
-                    self.trigger(dict)
-            heartBeat = Thread(target = self.send_heartbeat_request, args =[self.own, p])
-            if p in self.alive:
-                self.alive.remove(p)
-            heartBeat.start()
+
+            objAlive = Thread(target = self.heartbeatRequest, args = [p])
+
         self.t = Timer(self.timeout, self.timeoutCallback)
         self.t.start()
         # used for printing
         self.time = time.time()
         pass
-    # own sends heartBeat request to process
-    def send_heartbeat_request(self, own, process):
-        dict = {}
-        dict['from'] = own
-        dict['to'] = process
-        dict['message'] = 'request'
-        self.pl.send(process, "POST", "/FailurDetector/deliver", json.dumps(dict))
-        pass
     # own send heartBeat reply to process
-    def send_heartbeat_reply(self, own, process):
-        dict = {}
-        dict['from'] = own
-        dict['to'] = process
-        dict['message'] = 'reply'
-        self.pl.send(process, "POST", "/FailurDetector/deliver", json.dumps(dict))
-        pass
-
 
 class FailureDetector(Layer):
     def __init__(self, own, alive, timeout, flaskApp):
@@ -325,10 +302,10 @@ class PerfectLink(Layer):
         pass
 
     #send message: message from process: own to process: process
-    def send(self, process, method, url, data):
+    def send(self, process, method, url, data, timeout=10):
         # TODO handle exceptions like wrong address
         try:
-            conn = httplib.HTTPConnection(process, timeout=10)
+            conn = httplib.HTTPConnection(process, timeout)
             arr = [data, process]
             conn.request(method, url, json.dumps(arr),  {'content-type': 'application/json'})
             response = conn.getresponse().read()
