@@ -30,6 +30,16 @@ class App(object):
         self.port = port
         self.app = Flask(__name__)
         self.app.add_url_rule('/shutdown_server/', 'server', self.shutdown, methods=['GET'])
+        self.app.add_url_rule('/rb/btest', 'rbtest', self.view, methods=['GET'])
+
+    def set_rb(self, rb):
+        self.rb = rb
+
+    def view(self):
+        data = request.get_json()
+        ## TODO: add rb in APP
+        self.rb.rbHandler(data[1], 'GET', '/rb/btest', data[0])
+        return ""
 
     def launchServer(self):
         server = Thread(target = self.launchServerNow, args =[])
@@ -54,33 +64,34 @@ class fakePeer(object):
         self.app = App(host, port)
         self.bootsLoc = "{}:{}".format(host, port)
         self.pl = PerfectLink()
-        self.pfd = PerfecFailureDetector(alive, 5, self)
-        #self.rb = ReliableBroadcast("{}".format(bootsLoc),  ["{}".format(bootsLoc)], self.serverSide.app, self)
-
+        self.pfd = PerfecFailureDetector(alive, 2, self)
+        self.rb = ReliableBroadcast(self.bootsLoc, self)
+        self.app.set_rb(self.rb)
         self.app.launchServer()
 
-class ReliableBroadcast():
-    def __init__(self, own, processes, peer):
-        super().__init__(suscriber)
+class ReliableBroadcast(object):
+    def __init__(self, own, peer):
         self.own = own
 
-        self.correct = processes
-        self.msg_from = {}
-
-        for p in processes:
-            self.msg_from[p] = []
 
         self.pfd = peer.pfd
         self.pl = peer.pl
-        flaskApp.add_url_rule('/rb/see', 'rb_see', self.status, methods=['GET'])
+        self.alive = self.pfd.get_alive()
+        self.prev = self.alive.copy()
+        self.msg_from = {}
+        for p in self.alive:
+            self.msg_from[p] = []
+        peer.app.app.add_url_rule('/rb/see', 'rb_see', self.status, methods=['GET'])
 
     def status(self):
         def print_msg(msgs, p):
             view = "Process: {}<ul>".format(p)
+            print(msgs)
             if len(msgs) > 0:
                 for msg in msgs:
                     view += "<li> Message <ul>"
                     view += "<li><b> Timestamp: </b>{}</li>".format(msg['ts'])
+                    view += "<li><b> From: </b>{}</li>".format(msg['from'])
                     view += "<li><b> Message: </b>{}</li></ul>".format(msg['msg'])
             else:
                 view += "<li> Message <ul>"
@@ -89,50 +100,61 @@ class ReliableBroadcast():
             return view
 
         title = "<h1> log page RB broadcast</h1>"
-        list = "<h2> Messages recieved</h2>"+ "\n".join([print_msg(self.msg_from[p], p) for p in self.correct])
+        list = "<h2> Messages recieved</h2>"+ "\n".join([print_msg(self.msg_from[p], p) for p in self.alive])
         return title + list + self.pfd.status()
 
     def broadcast(self, method, url, msg):
         dict = {}
         dict['from'] = self.own
-        dict['msg'] = message
-
+        dict['msg'] = msg
+        dict['ts'] = time.time()
         return self._broadcast(method, url, dict)
 
-    def _broadcast(self, method, url, msg):
+    def _broadcast(self, method, url, msg, own=None):
+        if own is None:
+            own = self.own
         respList = []
-        for p in self.correct:
-            respList.append(self.pl.send(p, method, url, msg))
+
+        self.pfdHandler()
+
+        for p in self.alive:
+            respList.append(self.pl.send(own, p, method, url, msg))
 
         return respList
 
-    def notify(self, msg):
-        dict = msg
-        if 'layer' in dict.keys():
-            layer = dict['layer']
-            if layer == 'pfd':
-                p = dict['process']
-                self.pfdHandler(p)
     #upon event beb deliver
     def rbHandler(self, p, method, url, msg):
+        self.pfdHandler()
+        #print(p)
+        #print(msg)
+        print("*"*25)
+        print(self.msg_from)
         if msg not in self.msg_from[p]:
             self.msg_from[p].append(msg)
-            msg['layer'] = 'rb'
-            self.trigger(msg)
-            if p not in self.correct:
-                self._broadcast(method, url, msg)
-    #upon event crash p
-    def pfdHandler(self, p):
-        if p in self.correct:
-            self.correct.remove(p)
-        for msg in self.msg_from[p]:
-            self._broadcast(msg['method'], msg['url'], msg['msg'])
+            if p not in self.alive:
+                self._broadcast(method, url, msg, p)
+
+    def pfdHandler(self):
+        self.prev = self.alive.copy()
+        print(self.prev)
+        self.alive = self.pfd.get_alive()
+        print(self.alive)
+        diff = list(set(self.prev) - set(self.alive))
+        print(diff)
+        for p in diff:
+            # So p i new
+            if p in self.alive:
+                self.msg_from[p] = []
+            # Then p is dead
+            else:
+                #check if p even send one message
+                if p in self.msg_from.keys():
+                    for msg in self.msg_from[p]:
+                        self._broadcast(msg['method'], msg['url'], msg['msg'], p)
 
 
-class PerfecFailureDetector():
+class PerfecFailureDetector(object):
     def __init__(self, alive, timeout, peer):
-
-        flaskApp = peer.app.app
         self.pl = peer.pl
         self.own = peer.bootsLoc
 
@@ -141,8 +163,8 @@ class PerfecFailureDetector():
         self.detected = []
         self.now_alive = alive.copy()
 
-        flaskApp.add_url_rule('/FD/heartbeatRequest', 'heartbeat', self.heartbeatReply, methods=['GET'])
-        flaskApp.add_url_rule('/FD/see', 'status', self.status, methods=['GET'])
+        peer.app.app.add_url_rule('/FD/heartbeatRequest', 'heartbeat', self.heartbeatReply, methods=['GET'])
+        peer.app.app.add_url_rule('/FD/see', 'status', self.status, methods=['GET'])
         self.timeout = timeout
         self.t = Timer(self.timeout, self.timeoutCallback)
         self.t.start()
@@ -177,15 +199,14 @@ class PerfecFailureDetector():
     def heartbeatRequest(self, p):
         if p in self.alive:
             self.alive.remove(p)
-        alive = self.pl.send(p, 'GET', '/FD/heartbeatRequest', '', self.timeout -0.05)
+        alive = self.pl.send(self.own, p, 'GET', '/FD/heartbeatRequest', '', self.timeout -0.05)
         if alive is not None:
-            load = json.loads(objAlive)
+            load = json.loads(alive)
 
-            if load is 'True':
+            if load == 'True':
                 self.alive.append(p)
 
     def heartbeatReply(self):
-        print("HERE")
         list = request.get_json()
         p = list[1]
         if p not in self.process:
@@ -193,16 +214,17 @@ class PerfecFailureDetector():
         return json.dumps('True')
 
     def timeoutCallback(self):
-        print("enter callback")
         self.now_alive = self.alive.copy()
         for p in self.detected.copy():
             if p not in self.alive:
                 self.rm_node(p)
 
         for p in self.process:
+
             if (p not in self.alive) and (p not in self.detected):
                 self.detected.append(p)
-            print('FDP')
+            if (p in self.alive) and (p in self.detected):
+                self.detected.remove(p)
             objAlive = Thread(target = self.heartbeatRequest, args = [p])
             objAlive.start()
 
@@ -213,24 +235,21 @@ class PerfecFailureDetector():
         pass
     # own send heartBeat reply to process
 
-class PerfectLink():
+class PerfectLink(object):
     def __init__(self):
         pass
 
     #send message: message from process: own to process: process
-    def send(self, process, method, url, data, timeout=10):
+    def send(self, own, process, method, url, data, timeout=10):
         # TODO handle exceptions like wrong address
-        #try:
-        print(process)
-        conn = httplib.HTTPConnection(process, timeout)
-        arr = [data, process]
-        print(method)
-        print(url)
-        print(json.dumps(arr))
-        conn.request(method, url, json.dumps(arr),  {'content-type': 'application/json'})
-        response = conn.getresponse().read()
-        #except:
-        return None
+        try:
+            split = process.split(':')
+            conn = httplib.HTTPConnection(host=split[0], port=split[1], timeout=timeout)
+            arr = [data, own]
+            conn.request(method, url, json.dumps(arr),  {'content-type': 'application/json'})
+            response = conn.getresponse().read()
+        except:
+            return None
         return response.decode()
 
 
@@ -249,9 +268,20 @@ def parse_arguments():
 
 def main(args):
 
+    #alive = ["192.168.1.60:5000"]
+    #alive =["192.168.1.60:5000", "192.168.1.60:5001"]
     alive =["192.168.1.60:5000", "192.168.1.60:5001", "192.168.1.60:5002"]
     fake_peer = fakePeer(args.address, args.port, alive)
-
+    input()
+    fake_peer.rb.broadcast('GET', '/rb/btest', "someMessage")
+    input()
+    fake_peer.rb.broadcast('GET', '/rb/btest', "someMessage1")
+    input()
+    fake_peer.rb.broadcast('GET', '/rb/btest', "someMessage2")
+    input()
+    fake_peer.rb.broadcast('GET', '/rb/btest', "someMessage3")
+    input()
+    fake_peer.rb.broadcast('GET', '/rb/btest', "someMessage4")
     """
     rb0 = ReliableBroadcast(process[0], process, app0.app, None)
     rb1 = ReliableBroadcast(process[1], process, app1.app, None)
