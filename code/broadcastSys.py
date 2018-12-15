@@ -50,15 +50,16 @@ class App(object):
 
 
 class ReliableBroadcast(Layer):
-    def __init__(self, own, processes, flaskApp, suscriber, pfd):
+    def __init__(self, own, processes, flaskApp, suscriber, peer):
         super().__init__(suscriber)
         self.own = own
-        self.pl = PerfectLink(flaskApp)
+
         self.correct = processes
         self.msg_from = {}
         for p in processes:
             self.msg_from[p] = []
-        self.pfd = pfd
+        self.pfd = peer.pfd
+        self.pl = peer.pl
         flaskApp.add_url_rule('/rb/see', 'rb_see', self.status, methods=['GET'])
 
     def status(self):
@@ -89,7 +90,7 @@ class ReliableBroadcast(Layer):
     def _broadcast(self, method, url, msg):
         respList = []
         for p in self.correct:
-            respList.append(self.pl.send(p, method, url, json.dumps(msg))
+            respList.append(self.pl.send(p, method, url, msg)
 
         return respList
 
@@ -328,11 +329,12 @@ class PerfectLink(Layer):
         # TODO handle exceptions like wrong address
         try:
             conn = httplib.HTTPConnection(process, timeout=10)
-            conn.request(method, url, data,  {'content-type': 'application/json'})
+            arr = [data, process]
+            conn.request(method, url, json.dumps(arr),  {'content-type': 'application/json'})
             response = conn.getresponse().read()
         except:
             return None
-        return (response.decode(), process)
+        return response.decode()
 
     #Process delivered message correctly to own
     def plDeliver(self):

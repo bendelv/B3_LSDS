@@ -499,6 +499,11 @@ class Blockchain:
 
         return cls(None, difficulty, block, transactionBuffer)
 
+    def setStorage(self, objBC):
+        load = json.loads(objBC)
+        self._blocks = load[0]
+        self._transactionBuffer = load[1]
+
     def __str__(self):
         myStr = ""
         for block in self._blocks:
@@ -507,6 +512,9 @@ class Blockchain:
 
     def toJson(self):
         return json.dumps(self, default=lambda o: o.__dict__, indent=4)
+
+    def toJson2(self):
+        return json.dumps([self._blocks, self._transactionBuffer])
 
     def last_element(self):
         return self._blocks[len(self._blocks) - 1]

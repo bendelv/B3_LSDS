@@ -2,13 +2,14 @@ from flask import Flask, request, jsonify
 from argparse import ArgumentParser, ArgumentTypeError
 from threading import Thread
 import http.client as httplib
-
+import numpy as np
 import socket
 import json
 import time
 
 from broadcastSys import FailureDetector
 from application import Transaction
+from broadcastSys import PerfectLink
 
 class Peer:
     def __init__(self, blockchain, bootsDist, bootsLoc):
@@ -16,8 +17,10 @@ class Peer:
         self.serverSide = Server(bootsLoc, self)
         time.sleep(1)
         self.clientSide = Client(bootsDist, bootsLoc, self)
-        self.pfd = FailureDetector("{}".format(bootsLoc), ["{}".format(bootsLoc)], 5, self.serverSide.app)
-        self.rb = ReliableBroadcast("{}".format(bootsLoc),  ["{}".format(bootsLoc)], self.serverSide.app, None, self.pfd)
+
+        self.pl = PerfectLink(flaskApp)
+        self.pfd = FailureDetector("{}".format(bootsLoc), ["{}".format(bootsLoc)], 5, self.serverSide.app, self)
+        self.rb = ReliableBroadcast("{}".format(bootsLoc),  ["{}".format(bootsLoc)], self.serverSide.app, self)
         pass
 
     def removeConnection(self):
@@ -37,10 +40,10 @@ class Server:
         address = args
         self.app = Flask(__name__)
         self.app.add_url_rule('/rb/addNode', 'addNode', self.addNode, methods = ['POST'])
-        self.app.add_url_rule('/rb/rmNode', 'rmNode', self.rmNode, methods = ['POST'])
+        self.app.add_url_rule('/rb/rmNode', 'rmNode', self.rmNode, methods = ['DELETE'])
         self.app.add_url_rule('/rb/addTransaction', 'addTransaction', self.addTransaction, methods = ['POST'])
         self.app.add_url_rule('/rb/blockMined', 'blockMined', self.blockMined, methods = ['POST'])
-        self.app.add_url_rule('/dumpH', 'dumpH', self.dumpH, methods = ['POST'])
+        self.app.add_url_rule('/askBC', 'askBC', self.askBC, methods = ['GET'])
 
         myList = address.split(':')
         host = myList[0]
@@ -51,12 +54,14 @@ class Server:
         node = request.get_json()
         self.peer.rb.rbHandler('POST', '/rb/addNode', node)
         self.peer.pfd.add_node(node)
-        return json.dumps("Nood succefuly added to ___")
+        blocks = self.peer._blockchain._blocks
+        HblockChain = blocks[len(blocks) - 1]._hash
+        return json.dumps(HblockChain)
 
     def rmNode(self):
         node = request.get_json()
-        self.perr.pfd.rm_node(node)
-        return "node removed"
+        self.peer.rb.rbHandler('DELETE', '/rb/rmNode', node)
+        self.peer.pfd.rm_node(node)
 
     #To be tested when broadcast available
     def addTransaction(self):
@@ -70,6 +75,9 @@ class Server:
         self._blockchain.set_blockReceived(block)
         pass
 
+    def askBC(self):
+        return self.peer._blockchain.toJson2()
+
 class Client:
     def __init__(self, bootsDist, bootsLoc, peer):
         self.bootsDist = bootsDist
@@ -79,15 +87,27 @@ class Client:
         self.connectToNodes()
 
     def contactDistBoost(self):
-        conn = httplib.HTTPConnection("{}".format(self.bootsDist))
-        conn.request("POST","/joinP2P", json.dumps(self.bootsLoc),{'content-type': 'application/json'})
-        response = conn.getresponse().read()
-        print(response.decode())
-        self.peer.pfd.alive = json.loads(response.decode())
+        objNodes = self.peer.pl.send(bootsDist, "POST", "/joinP2P", self.bootsLoc)
+        self.peer.pfd.alive = json.loads(objNodes)
 
 
     def connectToNodes(self):
-        self.Peer.bbroadcast("POST","/addNode", json.dumps(self.bootsLoc), {'content-type': 'application/json'})
+        objH = self.Peer.rb.broadcast("POST","/addNode", self.bootsLoc)
+
+        listH = np.zeros((len(objH), 2))
+        for i in np.arange(len(objH)):
+            listH[i][0] = json.loads(objH)[i][0]
+            listH[i][1] = json.loads(objH)[i][1]
+
+        unique, counts = np.unique(listH[:][0], return_counts=True)
+        secureH = unique[np.argmax(counts)]
+
+        #take the first secureNode from secureH
+        secureNode = listH[listH[:][0].index(secureH)][1]
+
+        objBC = self.peer.pl.send(secureNode, "GET", "/askBC", '')
+
+        self.peer._blockchain.setStorage(objBC)
 
     def broadcastTransaction():
         #TODO when broadcast available
@@ -98,10 +118,8 @@ class Client:
         pass
 
     def disconnect(self):
-        conn = httplib.HTTPConnection("{}".format(self.bootsDist))
-        conn.request("DELETE","/rmNode", json.dumps(self.bootsLoc), {'content-type': 'application/json'})
-
-        self.broadcast('DELETE', "/rmNode", json.dumps(self.bootsLoc), {'content-type': 'application/json'})
+        objNodes = self.peer.pl.send(bootsDist, "DELETE", "/rmNode", self.bootsLoc)
+        objH = self.Peer.rb.broadcast("DELETE", "/rb/rmNode", self.bootsLoc)
 
 def main():
     parser = ArgumentParser()
