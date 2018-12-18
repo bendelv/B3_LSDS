@@ -7,8 +7,10 @@ import socket
 import json
 import time
 
-from broadcastSys import FailureDetector
+
 from application import Transaction
+from broadcastSys import ReliableBroadcast
+from broadcastSys import PerfecFailureDetector
 from broadcastSys import PerfectLink
 
 class Peer:
@@ -19,11 +21,13 @@ class Peer:
 
         self.serverSide = Server(bootsLoc, self)
         time.sleep(1)
+        self.pl = PerfectLink()
+        self.pfd = PerfecFailureDetector(["{}".format(bootsLoc)], 5, self)
+        self.rb = ReliableBroadcast("{}".format(bootsLoc), self)
+        time.sleep(1)
         self.clientSide = Client(bootsDist, bootsLoc, self)
 
-        self.pl = PerfectLink(flaskApp)
-        self.pfd = FailureDetector("{}".format(bootsLoc), ["{}".format(bootsLoc)], 5, self.serverSide.app, self)
-        self.rb = ReliableBroadcast("{}".format(bootsLoc),  ["{}".format(bootsLoc)], self.serverSide.app, self)
+
         pass
 
     def removeConnection(self):
@@ -42,6 +46,7 @@ class Server:
 
         address = args
         self.app = Flask(__name__)
+        self.app.add_url_rule('/joinP2P', 'join_P2P', self.joinP2P, methods=['POST'])
         self.app.add_url_rule('/rb/addNode', 'addNode', self.addNode, methods = ['POST'])
         self.app.add_url_rule('/rb/rmNode', 'rmNode', self.rmNode, methods = ['DELETE'])
         self.app.add_url_rule('/rb/addTransaction', 'addTransaction', self.addTransaction, methods = ['POST'])
@@ -53,13 +58,24 @@ class Server:
         port = myList[1]
         self.app.run(debug=True, use_reloader=False, host=host, port=port)
 
+    def joinP2P(self):
+        objNode = request.get_json()
+
+        self.peer.pfd.add_node(objNode[0])
+        list = self.peer.pfd.get_alive()
+        return json.dumps(list)
+
     def addNode(self):
-        node = request.get_json()
-        self.peer.rb.rbHandler('POST', '/rb/addNode', node)
-        self.peer.pfd.add_node(node)
+        objNode = request.get_json()
+        self.peer.rb.rbHandler(objNode[1], 'POST', '/rb/addNode', objNode[0])
+
+        self.peer.pfd.add_node(objNode[0]['msg'])
+        """
         blocks = self.peer._blockchain._blocks
         HblockChain = blocks[len(blocks) - 1]._hash
         return json.dumps(HblockChain)
+        """
+        return json.dumps('')
 
     def rmNode(self):
         node = request.get_json()
@@ -90,13 +106,17 @@ class Client:
         self.connectToNodes()
 
     def contactDistBoost(self):
-        objNodes = self.peer.pl.send(bootsDist, "POST", "/joinP2P", self.bootsLoc)
-        self.peer.pfd.alive = json.loads(objNodes)
-
-
+        objNodes = self.peer.pl.send(self.bootsLoc, self.bootsDist, "POST", "/joinP2P", self.bootsLoc)
+        objNodes = json.loads(objNodes)
+        self.peer.pfd.add_nodes(objNodes)
+        print("="*25)
+        print("objNodes")
+        print(objNodes[0], "\t", objNodes)
+        print("="*25)
     def connectToNodes(self):
-        objH = self.Peer.rb.broadcast("POST","/addNode", self.bootsLoc)
+        objH = self.peer.rb.broadcast("POST","/rb/addNode", self.bootsLoc)
 
+        """
         listH = np.zeros((len(objH), 2))
         for i in np.arange(len(objH)):
             listH[i][0] = json.loads(objH)[i][0]
@@ -111,6 +131,7 @@ class Client:
         objBC = self.peer.pl.send(secureNode, "GET", "/askBC", '')
 
         self.peer._blockchain.setStorage(objBC)
+        """
 
     def broadcastTransaction():
         #TODO when broadcast available
@@ -124,15 +145,10 @@ class Client:
         objNodes = self.peer.pl.send(bootsDist, "DELETE", "/rmNode", self.bootsLoc)
         objH = self.Peer.rb.broadcast("DELETE", "/rb/rmNode", self.bootsLoc)
 
-def main():
-    parser = ArgumentParser()
-    parser.add_argument(
-        '--bootsloc',
-        default="8001")
-    args = parser.parse_args()
+def main(args):
 
-    bootsDist = "192.168.1.25:8000"
-    bootsLoc = "192.168.1.60:{}".format(args.bootsloc)
+    bootsDist = "10.9.172.251:8000"
+    bootsLoc = "10.9.172.251:{}".format(args.bootsloc)
     peer = Peer(bootsDist, bootsLoc)
 
     input()
@@ -143,4 +159,9 @@ def main():
     return 0
 
 if __name__ == "__main__":
-    main()
+    parser = ArgumentParser()
+    parser.add_argument(
+        '--bootsloc',
+        default="8001")
+    args = parser.parse_args()
+    main(args)

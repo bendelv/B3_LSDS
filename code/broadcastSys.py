@@ -61,13 +61,13 @@ class App(object):
 
 class fakePeer(object):
     def __init__(self, host, port, alive):
-        self.app = App(host, port)
+        self.serverSide = App(host, port)
         self.bootsLoc = "{}:{}".format(host, port)
         self.pl = PerfectLink()
         self.pfd = PerfecFailureDetector(alive, 2, self)
         self.rb = ReliableBroadcast(self.bootsLoc, self)
-        self.app.set_rb(self.rb)
-        self.app.launchServer()
+        self.serverSide.set_rb(self.rb)
+        self.serverSide.launchServer()
 
 class ReliableBroadcast(object):
     def __init__(self, own, peer):
@@ -81,7 +81,7 @@ class ReliableBroadcast(object):
         self.msg_from = {}
         for p in self.alive:
             self.msg_from[p] = []
-        peer.app.app.add_url_rule('/rb/see', 'rb_see', self.status, methods=['GET'])
+        peer.serverSide.app.add_url_rule('/rb/see', 'rb_see', self.status, methods=['GET'])
 
     def status(self):
         def print_msg(msgs, p):
@@ -116,7 +116,6 @@ class ReliableBroadcast(object):
         respList = []
 
         self.pfdHandler()
-
         for p in self.alive:
             respList.append(self.pl.send(own, p, method, url, msg))
 
@@ -125,10 +124,7 @@ class ReliableBroadcast(object):
     #upon event beb deliver
     def rbHandler(self, p, method, url, msg):
         self.pfdHandler()
-        #print(p)
-        #print(msg)
-        print("*"*25)
-        print(self.msg_from)
+
         if msg not in self.msg_from[p]:
             self.msg_from[p].append(msg)
             if p not in self.alive:
@@ -136,11 +132,8 @@ class ReliableBroadcast(object):
 
     def pfdHandler(self):
         self.prev = self.alive.copy()
-        print(self.prev)
         self.alive = self.pfd.get_alive()
-        print(self.alive)
         diff = list(set(self.prev) - set(self.alive))
-        print(diff)
         for p in diff:
             # So p i new
             if p in self.alive:
@@ -154,17 +147,18 @@ class ReliableBroadcast(object):
 
 
 class PerfecFailureDetector(object):
-    def __init__(self, alive, timeout, peer):
+    def __init__(self, alive, timeout, peer = None):
         self.pl = peer.pl
         self.own = peer.bootsLoc
 
         self.process = alive.copy()
         self.alive = alive.copy()
+
         self.detected = []
         self.now_alive = alive.copy()
 
-        peer.app.app.add_url_rule('/FD/heartbeatRequest', 'heartbeat', self.heartbeatReply, methods=['GET'])
-        peer.app.app.add_url_rule('/FD/see', 'status', self.status, methods=['GET'])
+        peer.serverSide.app.add_url_rule('/FD/heartbeatRequest', 'heartbeat', self.heartbeatReply, methods=['GET'])
+        peer.serverSide.app.add_url_rule('/FD/see', 'status', self.status, methods=['GET'])
         self.timeout = timeout
         self.t = Timer(self.timeout, self.timeoutCallback)
         self.t.start()
@@ -180,11 +174,17 @@ class PerfecFailureDetector(object):
         if process in self.detected:
             self.detected.remove(process)
 
+    def add_nodes(self, processes):
+        for p in processes:
+            self.add_node(p)
+
     def add_node(self, process):
+
         if process not in self.process:
             self.process.append(process)
         if process not in self.alive:
             self.alive.append(process)
+
 
     def status(self):
         # optimization, implement nodes as a dict for a lookup in O(1) instead
@@ -214,6 +214,7 @@ class PerfecFailureDetector(object):
         return json.dumps('True')
 
     def timeoutCallback(self):
+
         self.now_alive = self.alive.copy()
         for p in self.detected.copy():
             if p not in self.alive:
@@ -258,9 +259,9 @@ def parse_arguments():
         "KeyChain - An overengineered key-value store "
         "with version control, powered by fancy linked-lists.")
 
-    parser.add_argument("--address", type=str, default="192.168.1.60",
+    parser.add_argument("--address", type=str, default="10.9.172.251",
                         help="ip Address")
-    parser.add_argument("--port", type=str, default="5000",
+    parser.add_argument("--port", type=str, default="8000",
                         help="Port number")
 
     return parser.parse_args()
@@ -270,7 +271,7 @@ def main(args):
 
     #alive = ["192.168.1.60:5000"]
     #alive =["192.168.1.60:5000", "192.168.1.60:5001"]
-    alive =["192.168.1.60:5000", "192.168.1.60:5001", "192.168.1.60:5002"]
+    alive =["10.9.172.251:8000", "10.9.172.251:8001", "10.9.172.251:8002"]
     fake_peer = fakePeer(args.address, args.port, alive)
     input()
     fake_peer.rb.broadcast('GET', '/rb/btest', "someMessage")

@@ -10,9 +10,20 @@ import sys
 from operator import attrgetter
 import pickle
 import json
+import argparse
 from random import randint
-
 from peer import Peer
+
+class FakeApplication:
+    def __init__(self, bootstrap, bootsloc, miner, difficulty):
+        """Allocate the backend storage of the high level API, i.e.,
+        your blockchain. Depending whether or not the miner flag has
+        been specified, you should allocate the mining process.
+        """
+        self._bootsloc = bootsloc
+        self._bootstrap = bootstrap
+        self._miner = miner
+        self._blockchain = Blockchain(self)
 
 class MerkleLeaf:
     def __init__(self, transaction, prefixes=None, nonce=0, hash=None, leaf=True):
@@ -464,11 +475,12 @@ class Blockchain:
         addres, download the peerlist, and start the bootstrapping procedure.
         """
 
-        self._peer = Peer(self, application.bootstrap, application.bootsloc)
+        self._peer = Peer(self, application._bootstrap, application._bootsloc)
+
         # Initialize blockchain and transactionBuffer HERE
         # Initialize the properties.
         self._difficulty = difficulty
-
+        """
         if blocks is None:
             self._blocks = [self._add_genesis_block()]
         else:
@@ -484,7 +496,7 @@ class Blockchain:
         if application.miner = True:
             consensusThread = Thread(target = self.lauchMining, args = [])
             consensusThread.start()
-
+        """
     @classmethod
     def fromJsonDict(cls, dict):
         difficulty = dict['_difficulty']
@@ -626,7 +638,7 @@ class Blockchain:
                 return resutl
         return all
 
-def main():
+def main(args):
     '''Test with 0 transaction.
             - Cannot be tested with merkleTree and no transactionsself.
             - OKaY with merkleTree
@@ -901,5 +913,22 @@ def main():
     print(bc2.toJson() == bc.toJson())
     sys.exit()
     '''
+
+
+    bootstrap = "10.9.172.251:8000"
+    bootsloc = "10.9.172.251:{}".format(args.bootsloc)
+    app = FakeApplication(bootstrap, bootsloc, False, 1)
+
+    input()
+    print(peer.pfd.alive)
+    input()
+    peer.removeConnection()
+
+
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '--bootsloc',
+        default="8001")
+    args = parser.parse_args()
+    main(args)

@@ -3,9 +3,9 @@ User-level application (stub).
 
 NB: Feel free to extend or modify.
 """
-
+import time
 import argparse
-from keychain import Blockchain
+"from blockchain import Blockchain"
 
 class Callback:
     def __init__(self, transaction, chain):
@@ -61,7 +61,7 @@ class Application:
         self._bootsloc = bootsloc
         self._bootstrap = bootstrap
         self._miner = miner
-        self._blockchain = Blockchain(self._peer, self, difficulty)
+        self._blockchain = Blockchain(self, difficulty)
 
     def put(self, key, value, block=True):
         """Puts the specified key and value on the Blockchain.
