@@ -17,8 +17,8 @@ The second element indicates the largest value in the tree.
 The is also a method of the chain in order to build the object from the json string.
 
 ## 2. Links
-
-- [Orverleaf link](https://www.overleaf.com/5154783312jffsnfwyqfqp)
+- [Report Overleaf link](https://www.overleaf.com/3966231585xksqsgmswwjq)
+- [Paper Orverleaf link](https://www.overleaf.com/5154783312jffsnfwyqfqp)
 - [Unit tests](https://docs.python.org/3.5/library/unittest.html)
 - [Bitcoin](https://bitcoin.org/bitcoin.pdf)
 - [Markdown Cheatsheet](https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet)
@@ -64,13 +64,13 @@ the reference paper the amount of work is exponential w.r.t the number of 0s.
 
 ### Broadcast
 
-- [ ] implement broadcast system. (Pierre)
+- [x] implement broadcast system. (Pierre)
 
 ### Network
 
 - [x] add new address to bootstrap server.
 - [x] broadcast new address.
-- [ ] broadcast JSon objects trough broadcast system. (in particular Blockchain, new key/value, list of connected peer)
+- [x] broadcast JSon objects trough broadcast system. (in particular Blockchain, new key/value, list of connected peer)
 - [ ] get local from remote version of blockchain and transmit to Blockchain level
 
 ### Low level features
