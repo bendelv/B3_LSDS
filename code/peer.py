@@ -26,8 +26,6 @@ class Peer:
         self.rb = ReliableBroadcast("{}".format(bootsLoc), self)
         time.sleep(1)
         self.clientSide = Client(bootsDist, bootsLoc, self)
-
-
         pass
 
     def removeConnection(self):
@@ -35,6 +33,7 @@ class Peer:
 
     def broadcast_foundBlock(self, block):
         self.clientSide.broadcast_foundBlock(block)
+
 
 class Server:
     def __init__(self, address, peer):
@@ -60,16 +59,15 @@ class Server:
 
     def joinP2P(self):
         objNode = request.get_json()
-
         self.peer.pfd.add_node(objNode[0])
         list = self.peer.pfd.get_alive()
         return json.dumps(list)
 
     def addNode(self):
         objNode = request.get_json()
+        self.peer.pfd.add_node(objNode[0]['msg'])
         self.peer.rb.rbHandler(objNode[1], 'POST', '/rb/addNode', objNode[0])
 
-        self.peer.pfd.add_node(objNode[0]['msg'])
         """
         blocks = self.peer._blockchain._blocks
         HblockChain = blocks[len(blocks) - 1]._hash
@@ -81,7 +79,6 @@ class Server:
         node = request.get_json()
         self.peer.rb.rbHandler('DELETE', '/rb/rmNode', node)
         self.peer.pfd.rm_node(node)
-
     #To be tested when broadcast available
     def addTransaction(self):
         transaction = request.get_json()
@@ -97,6 +94,7 @@ class Server:
     def askBC(self):
         return self.peer._blockchain.toJson2()
 
+
 class Client:
     def __init__(self, bootsDist, bootsLoc, peer):
         self.bootsDist = bootsDist
@@ -107,14 +105,10 @@ class Client:
 
     def contactDistBoost(self):
         objNodes = self.peer.pl.send(self.bootsLoc, self.bootsDist, "POST", "/joinP2P", self.bootsLoc)
-        objNodes = json.loads(objNodes)
         self.peer.pfd.add_nodes(objNodes)
-        print("="*25)
-        print("objNodes")
-        print(objNodes[0], "\t", objNodes)
-        print("="*25)
+
     def connectToNodes(self):
-        objH = self.peer.rb.broadcast("POST","/rb/addNode", self.bootsLoc)
+        self.peer.rb.broadcast("POST","/rb/addNode", self.bootsLoc)
 
         """
         listH = np.zeros((len(objH), 2))
@@ -145,16 +139,12 @@ class Client:
         objNodes = self.peer.pl.send(bootsDist, "DELETE", "/rmNode", self.bootsLoc)
         objH = self.Peer.rb.broadcast("DELETE", "/rb/rmNode", self.bootsLoc)
 
+
 def main(args):
 
     bootsDist = "10.9.172.251:8000"
     bootsLoc = "10.9.172.251:{}".format(args.bootsloc)
     peer = Peer(bootsDist, bootsLoc)
-
-    input()
-    print(peer.pfd.alive)
-    input()
-    peer.removeConnection()
 
     return 0
 

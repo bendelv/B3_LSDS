@@ -14,6 +14,7 @@ import argparse
 from random import randint
 from peer import Peer
 
+
 class FakeApplication:
     def __init__(self, bootstrap, bootsloc, miner, difficulty):
         """Allocate the backend storage of the high level API, i.e.,
@@ -24,6 +25,7 @@ class FakeApplication:
         self._bootstrap = bootstrap
         self._miner = miner
         self._blockchain = Blockchain(self)
+
 
 class MerkleLeaf:
     def __init__(self, transaction, prefixes=None, nonce=0, hash=None, leaf=True):
@@ -103,6 +105,7 @@ class MerkleLeaf:
                     return all
         else:
             return self._transaction.get_key() == key
+
 
 class MerkleNode:
     def __init__(self, left, right, leftHash=None, rightHash=None, prefixes=None, nonce=None, hash=None):
@@ -260,6 +263,7 @@ class MerkleNode:
                     return False, None
             return self._left.in_tree(key, get, all) or self._right.in_tree(key, get, all)
 
+
 class MerkleTree:
     def __init__(self, transactions=None):
         self._one = False
@@ -371,6 +375,7 @@ class MerkleTree:
     def is_inside(self, key, get=False, all=None):
         return self._tree.in_tree(key, get, all)
 
+
 class Block:
     def __init__(self, timestamp, transactions, previousHash = "", nonce=None, transactionsHash=None, hash=None, notrans=None):
         """Describe the properties of a block."""
@@ -467,6 +472,7 @@ class Block:
     def is_inside(self, key, get=False, all=None):
         return self._transactions.is_inside(key, get, all)
 
+
 class Blockchain:
     def __init__(self, application, difficulty=None, blocks=None, transactionBuffer=None):
         """
@@ -497,6 +503,7 @@ class Blockchain:
             consensusThread = Thread(target = self.lauchMining, args = [])
             consensusThread.start()
         """
+
     @classmethod
     def fromJsonDict(cls, dict):
         difficulty = dict['_difficulty']
@@ -637,6 +644,7 @@ class Blockchain:
             else:
                 return resutl
         return all
+
 
 def main(args):
     '''Test with 0 transaction.
@@ -915,20 +923,18 @@ def main(args):
     '''
 
 
-    bootstrap = "10.9.172.251:8000"
-    bootsloc = "10.9.172.251:{}".format(args.bootsloc)
+    bootstrap = "192.168.1.25:8000"
+    bootsloc = "192.168.1.25:{}".format(args.bootsloc)
     app = FakeApplication(bootstrap, bootsloc, False, 1)
 
     input()
-    print(peer.pfd.alive)
-    input()
-    peer.removeConnection()
 
+    #peer.removeConnection()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '--bootsloc',
+        '--bootsloc', '-b',
         default="8001")
     args = parser.parse_args()
     main(args)

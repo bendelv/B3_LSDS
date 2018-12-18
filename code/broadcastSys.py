@@ -14,7 +14,6 @@ from abc import ABC, abstractmethod
 class Layer(ABC):
     def __init__(self, suscriber):
         self.suscriber = suscriber
-
     @abstractmethod
     def notify(self, message):
         pass
@@ -47,17 +46,18 @@ class App(object):
         time.sleep(1)
 
     def launchServerNow(self):
-        print(self.host, self.port)
         self.app.run(debug=False, use_reloader=False, host=self.host, port=self.port)
 
     def shutdown(self):
         self.shutdown_server()
         return 'Server shutting down...'
+
     def shutdown_server(self):
         func = request.environ.get('werkzeug.server.shutdown')
         if func is None:
             raise RuntimeError('Not running with the Werkzeug Server')
         func()
+
 
 class fakePeer(object):
     def __init__(self, host, port, alive):
@@ -69,11 +69,10 @@ class fakePeer(object):
         self.serverSide.set_rb(self.rb)
         self.serverSide.launchServer()
 
+
 class ReliableBroadcast(object):
     def __init__(self, own, peer):
         self.own = own
-
-
         self.pfd = peer.pfd
         self.pl = peer.pl
         self.alive = self.pfd.get_alive()
@@ -86,7 +85,6 @@ class ReliableBroadcast(object):
     def status(self):
         def print_msg(msgs, p):
             view = "Process: {}<ul>".format(p)
-            print(msgs)
             if len(msgs) > 0:
                 for msg in msgs:
                     view += "<li> Message <ul>"
@@ -120,7 +118,6 @@ class ReliableBroadcast(object):
             respList.append(self.pl.send(own, p, method, url, msg))
 
         return respList
-
     #upon event beb deliver
     def rbHandler(self, p, method, url, msg):
         self.pfdHandler()
@@ -134,8 +131,13 @@ class ReliableBroadcast(object):
         self.prev = self.alive.copy()
         self.alive = self.pfd.get_alive()
         diff = list(set(self.prev) - set(self.alive))
+        # create new entry for every process not in msg_from
+        for p in self.alive:
+            if p not in self.msg_from.keys():
+                self.msg_from[p] = []
+
         for p in diff:
-            # So p i new
+            # So p is new
             if p in self.alive:
                 self.msg_from[p] = []
             # Then p is dead
@@ -179,12 +181,12 @@ class PerfecFailureDetector(object):
             self.add_node(p)
 
     def add_node(self, process):
-
         if process not in self.process:
             self.process.append(process)
         if process not in self.alive:
             self.alive.append(process)
-
+        if process not in self.now_alive:
+            self.now_alive.append(process)
 
     def status(self):
         # optimization, implement nodes as a dict for a lookup in O(1) instead
@@ -201,9 +203,7 @@ class PerfecFailureDetector(object):
             self.alive.remove(p)
         alive = self.pl.send(self.own, p, 'GET', '/FD/heartbeatRequest', '', self.timeout -0.05)
         if alive is not None:
-            load = json.loads(alive)
-
-            if load == 'True':
+            if alive == 'True':
                 self.alive.append(p)
 
     def heartbeatReply(self):
@@ -214,7 +214,6 @@ class PerfecFailureDetector(object):
         return json.dumps('True')
 
     def timeoutCallback(self):
-
         self.now_alive = self.alive.copy()
         for p in self.detected.copy():
             if p not in self.alive:
@@ -236,10 +235,10 @@ class PerfecFailureDetector(object):
         pass
     # own send heartBeat reply to process
 
+
 class PerfectLink(object):
     def __init__(self):
         pass
-
     #send message: message from process: own to process: process
     def send(self, own, process, method, url, data, timeout=10):
         # TODO handle exceptions like wrong address
@@ -251,7 +250,7 @@ class PerfectLink(object):
             response = conn.getresponse().read()
         except:
             return None
-        return response.decode()
+        return json.loads(response.decode())
 
 
 def parse_arguments():
