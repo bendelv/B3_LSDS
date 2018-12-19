@@ -29,6 +29,7 @@ class Peer:
         pass
 
     def removeConnection(self):
+        self.serverSide.disconnect()
         self.clientSide.disconnect()
 
     def broadcast_foundBlock(self, block):
@@ -76,9 +77,11 @@ class Server:
         return json.dumps('')
 
     def rmNode(self):
-        node = request.get_json()
-        self.peer.rb.rbHandler('DELETE', '/rb/rmNode', node)
-        self.peer.pfd.rm_node(node)
+        objNode = request.get_json()
+        self.peer.rb.rbHandler(objNode[1], 'DELETE', '/rb/rmNode', objNode[0])
+        self.peer.pfd.rm_node(objNode[0]['msg'])
+        return json.dumps('')
+
     #To be tested when broadcast available
     def addTransaction(self):
         transaction = request.get_json()
@@ -94,6 +97,9 @@ class Server:
     def askBC(self):
         return self.peer._blockchain.toJson2()
 
+    def disconnect(self):
+        #self.app.terminate()
+        self.app.join()
 
 class Client:
     def __init__(self, bootsDist, bootsLoc, peer):
@@ -136,8 +142,7 @@ class Client:
         pass
 
     def disconnect(self):
-        objNodes = self.peer.pl.send(bootsDist, "DELETE", "/rmNode", self.bootsLoc)
-        objH = self.Peer.rb.broadcast("DELETE", "/rb/rmNode", self.bootsLoc)
+        objH = self.peer.rb.broadcast("DELETE", "/rb/rmNode", self.bootsLoc)
 
 
 def main(args):

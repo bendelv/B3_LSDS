@@ -923,13 +923,12 @@ def main(args):
     '''
 
 
-    bootstrap = "192.168.1.25:8000"
-    bootsloc = "192.168.1.25:{}".format(args.bootsloc)
+    bootstrap = "192.168.1.56:8000"
+    bootsloc = "192.168.1.56:{}".format(args.bootsloc)
     app = FakeApplication(bootstrap, bootsloc, False, 1)
 
     input()
-
-    #peer.removeConnection()
+    app._blockchain._peer.removeConnection()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
