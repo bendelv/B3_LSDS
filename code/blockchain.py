@@ -27,13 +27,46 @@ class FakeApplication:
         self._blockchain = Blockchain(self)
 
 
+class Transaction:
+    def __init__(self, origin, key, value, timestamp=time.time()):
+        """
+        A transaction, in our KV setting. A transaction typically involves
+        some key, value and an origin (the one who put it onto the storage).
+        """
+        self._origin = origin
+        self._key = key
+        self._value = value
+        self._timestamp = timestamp
+
+    @classmethod
+    def fromJsonDict(cls, dict):
+        return cls(dict['_origin'], dict['_key'], dict['_value'], dict['_timestamp'])
+
+    def __str__(self):
+        dict = {}
+        dict["Origin"] = self._origin
+        dict["Key"] = self._key
+        dict["Value"] = self._value
+        dict["timestamp"] = self._timestamp
+        return json.dumps(dict, indent = 4)
+
+    def toJson(self):
+        return json.dumps(self, default=lambda o: o.__dict__, indent=4)
+
+    def getKey(self):
+        return self._key
+
+    def getTimestamp(self):
+        return self._timestamp
+
+
 class MerkleLeaf:
     def __init__(self, transaction, prefixes=None, nonce=0, hash=None, leaf=True):
         self._transaction = transaction
         if prefixes is not None:
             self._prefixes = prefixes
         else:
-            self._prefixes = self.compute_prefixes()
+            self._prefixes = self.computePrefixes()
         if nonce != 0:
             self.nonce = nonce
         else:
@@ -41,9 +74,8 @@ class MerkleLeaf:
         if hash is not None:
             self._hash = hash
         else:
-            self._hash = self.compute_hash()
+            self._hash = self.computeHash()
         self._leaf = leaf
-
     @classmethod
     def fromJsonDict(cls, dict):
         return cls(Transaction.fromJsonDict(dict['_transaction']),
@@ -62,16 +94,16 @@ class MerkleLeaf:
     def toJson(self):
         return json.dumps(self, default=lambda o: o.__dict__, indent=4)
 
-    def get_hash(self):
+    def getHash(self):
         return self._hash
 
-    def get_transaction(self):
+    def getTransaction(self):
         return self._transaction
 
-    def compute_prefixes(self):
-        return [str(self._transaction.get_key()),str(self._transaction.get_key())]
+    def computePrefixes(self):
+        return [str(self._transaction.getKey()),str(self._transaction.getKey())]
 
-    def compute_hash(self):
+    def computeHash(self):
         hashString = str(self)
         hash_object = hashlib.sha256(hashString.encode('utf-8'))
         hex_dig = hash_object.hexdigest()
@@ -82,17 +114,17 @@ class MerkleLeaf:
         self._nonce = randint(0, 1000)
         while self._hash[0:difficulty] != "0"*difficulty:
             self._nonce += 1
-            self._hash = self.compute_hash()
+            self._hash = self.computeHash()
         print("leaf mined")
 
-    def is_valid(self):
-        if self._hash != self.compute_hash():
+    def isValid(self):
+        if self._hash != self.computeHash():
             return False
         return True
 
-    def in_tree(self, key, get=False, all=None):
+    def inTree(self, key, get=False, all=None):
         if get:
-            if self._transaction.get_key() == key:
+            if self._transaction.getKey() == key:
                 if all is None:
                     return True, self._transaction
                 else:
@@ -104,7 +136,7 @@ class MerkleLeaf:
                 else:
                     return all
         else:
-            return self._transaction.get_key() == key
+            return self._transaction.getKey() == key
 
 
 class MerkleNode:
@@ -114,17 +146,17 @@ class MerkleNode:
         if leftHash is not None:
             self._leftHash = leftHash
         else:
-            self._leftHash = left.get_hash()
+            self._leftHash = left.getHash()
 
         if rightHash is not None:
             self._rightHash = rightHash
         else:
-            self._rightHash = right.get_hash()
+            self._rightHash = right.getHash()
 
         if prefixes is not None:
             self._prefixes = prefixes
         else:
-            self._prefixes = self.compute_prefixes()
+            self._prefixes = self.computePrefixes()
 
         if nonce is not None:
             self._nonce = nonce
@@ -134,8 +166,7 @@ class MerkleNode:
         if hash is not None:
             self._hash = hash
         else:
-            self._hash = self.compute_hash()
-
+            self._hash = self.computeHash()
     @classmethod
     def fromJsonDict(cls, dict):
         dict_left = dict['_left']
@@ -169,22 +200,22 @@ class MerkleNode:
     def toJson(self):
         return json.dumps(self, default=lambda o: o.__dict__, indent=4)
 
-    def get_hash(self):
+    def getHash(self):
         return self._hash
 
-    def compute_prefixes(self):
+    def computePrefixes(self):
 
-        return [self.compute_left_prefix(self._left._prefixes[0],
+        return [self.computeLeftPrefix(self._left._prefixes[0],
                                          self._right._prefixes[0]),
-                self.compute_right_prefix(self._left._prefixes[1],
+                self.computeRightPrefix(self._left._prefixes[1],
                                           self._right._prefixes[1])
                ]
 
-    def compute_right_prefix(self, left, right):
+    def computeRightPrefix(self, left, right):
         sorted_prefix = sorted([left, right])
         return sorted_prefix[1]
 
-    def compute_left_prefix(self, left, right):
+    def computeLeftPrefix(self, left, right):
         if left == right:
             return left
         list = [left , right]
@@ -195,7 +226,7 @@ class MerkleNode:
                 return longest[:i]
         return smallest
 
-    def compute_hash(self):
+    def computeHash(self):
         hashString = str(self)
         hash_object = hashlib.sha256(hashString.encode('utf-8'))
         hex_dig = hash_object.hexdigest()
@@ -208,28 +239,28 @@ class MerkleNode:
         print("Start mining Right node...")
         self._right.mine(difficulty)
         print("Right node mined")
-        self._leftHash = self._left.get_hash()
-        self._rightHash = self._right.get_hash()
+        self._leftHash = self._left.getHash()
+        self._rightHash = self._right.getHash()
         self._nonce = randint(0, 1000)
         while self._hash[0:difficulty] != "0"*difficulty:
             self._nonce += 1
-            self._hash = self.compute_hash()
+            self._hash = self.computeHash()
 
-    def is_valid(self):
-        if self.get_hash() != self.compute_hash():
+    def isValid(self):
+        if self.getHash() != self.computeHash():
             return False
-        if self._leftHash != self._left.get_hash():
+        if self._leftHash != self._left.getHash():
             return False
-        if self._rightHash != self._right.get_hash():
+        if self._rightHash != self._right.getHash():
             return False
         else:
-            return self._left.is_valid() and self._right.is_valid()
+            return self._left.isValid() and self._right.isValid()
 
-    def in_tree(self, key, get=False, all=None):
+    def inTree(self, key, get=False, all=None):
         if get:
             if all is None:
-                is_inside_l, trans_l = self._left.in_tree(key, get, all)
-                is_inside_r, trans_r = self._right.in_tree(key, get, all)
+                is_inside_l, trans_l = self._left.inTree(key, get, all)
+                is_inside_r, trans_r = self._right.inTree(key, get, all)
                 if is_inside_l:
                     return True, trans_l
                 elif is_inside_r:
@@ -237,31 +268,31 @@ class MerkleNode:
                 else:
                     return True, None
             else:
-                all = self._left.in_tree(key, get, all)
-                all = self._right.in_tree(key, get, all)
+                all = self._left.inTree(key, get, all)
+                all = self._right.inTree(key, get, all)
                 return all
 
         else:
-            is_inside = self._left.in_tree(key, get) or self._right.in_tree(key, get, all)
+            is_inside = self._left.inTree(key, get) or self._right.inTree(key, get, all)
             if is_inside:
                 return True
             else:
                 return False
 
-        smallest = self.compute_left_prefix(self._prefixes[0], key, all)
-        largest = self.compute_right_prefix(self._prefixes[1], key, all)
+        smallest = self.computeLeftPrefix(self._prefixes[0], key, all)
+        largest = self.computeRightPrefix(self._prefixes[1], key, all)
         #if the key is inbetween the two keyes
         if largest == self._prefixes[1] and smallest == self._prefixes[0]:
             if get:
                 if all is not None:
-                    is_inside_left, trans_left = self._left.in_tree(key, get, all)
-                    is_inside_right, trans_right = self._right.in_tree(key, get, all)
+                    is_inside_left, trans_left = self._left.inTree(key, get, all)
+                    is_inside_right, trans_right = self._right.inTree(key, get, all)
                     if trans_left is not None:
                         return True, trans_left
                     if trans_right is not None:
                         return True, trans_right
                     return False, None
-            return self._left.in_tree(key, get, all) or self._right.in_tree(key, get, all)
+            return self._left.inTree(key, get, all) or self._right.inTree(key, get, all)
 
 
 class MerkleTree:
@@ -274,11 +305,10 @@ class MerkleTree:
             else:
                 self._tree = MerkleLeaf(transactions[0])
                 self._one = True
-            self._hash = self.compute_hash()
+            self._hash = self.computeHash()
         else:
             self._tree = None
             self._hash = 0
-
     @classmethod
     def fromJsonDict(cls, dict):
         tree = dict['_tree']
@@ -296,13 +326,13 @@ class MerkleTree:
         dict = {}
         dict['one'] = self._one
         dict['nonce'] = self._nonce
-        dict['root_hash'] = self._tree.get_hash()
+        dict['root_hash'] = self._tree.getHash()
         return json.dumps(dict, indent = 4)
 
     def toJson(self):
         return json.dumps(self, default=lambda o: o.__dict__, indent=4)
 
-    def get_hash(self):
+    def getHash(self):
         return self._hash
 
     def buildMT(self, transactions):
@@ -359,21 +389,21 @@ class MerkleTree:
         self._nonce = randint(0, 1000)
         while self._hash[0:difficulty] != "0"*difficulty:
             self._nonce += 1
-            self._hash = self.compute_hash()
+            self._hash = self.computeHash()
 
-    def compute_hash(self):
+    def computeHash(self):
         hashString = str(self)
         hash_object = hashlib.sha256(hashString.encode('utf-8'))
         hex_dig = hash_object.hexdigest()
         return hex_dig
 
-    def is_valid(self):
-        if self._hash != self._tree.get_hash():
+    def isValid(self):
+        if self._hash != self._tree.getHash():
             return False
-        return self._tree.is_valid()
+        return self._tree.isValid()
 
-    def is_inside(self, key, get=False, all=None):
-        return self._tree.in_tree(key, get, all)
+    def isInside(self, key, get=False, all=None):
+        return self._tree.inTree(key, get, all)
 
 
 class Block:
@@ -389,7 +419,7 @@ class Block:
             else:
                 self._transactions = MerkleTree(transactions)
                 self._notrans = False
-                self._transactionsHash = self._transactions.get_hash()
+                self._transactionsHash = self._transactions.getHash()
         else:
             self._transactions = transactions
             self._notrans = notrans
@@ -405,10 +435,9 @@ class Block:
         if hash is not None:
             self._hash = hash
         else:
-            self._hash = self.compute_hash()
+            self._hash = self.computeHash()
 
         self.blockReceived = None
-
     @classmethod
     def fromJsonDict(cls, dict):
         notrans = dict['_notrans']
@@ -434,16 +463,16 @@ class Block:
     def toJson(self):
         return json.dumps(self, default=lambda o: o.__dict__, indent=4)
 
-    def set_previous_hash(self, hash):
+    def setPreviousHash(self, hash):
         self._previousHash = hash
 
-    def get_previous_hash(self):
+    def getPreviousHash(self):
         return self._previousHash
 
-    def get_hash(self):
+    def getHash(self):
         return self._hash
 
-    def compute_hash(self):
+    def computeHash(self):
         """Compute hash value of the current block"""
         hashString = str(self)
         hash_object = hashlib.sha256(hashString.encode('utf-8'))
@@ -460,17 +489,17 @@ class Block:
         "self._nonce = randint(0, 1000)"
         while self._hash[0:difficulty] != "0"*difficulty and self.blockReceived is None:
             self._nonce += 1
-            self._hash = self.compute_hash()
+            self._hash = self.computeHash()
 
     def transactions(self):
         """Returns the list of transactions associated with this block."""
         return self._transactions
 
-    def is_valid(self):
-        return self._transactions.is_valid()
+    def isValid(self):
+        return self._transactions.isValid()
 
-    def is_inside(self, key, get=False, all=None):
-        return self._transactions.is_inside(key, get, all)
+    def isInside(self, key, get=False, all=None):
+        return self._transactions.isInside(key, get, all)
 
 
 class Blockchain:
@@ -488,7 +517,7 @@ class Blockchain:
         self._difficulty = difficulty
         """
         if blocks is None:
-            self._blocks = [self._add_genesis_block()]
+            self._blocks = [self._addGenesisBlock()]
         else:
             self._blocks = blocks
 
@@ -503,7 +532,6 @@ class Blockchain:
             consensusThread = Thread(target = self.lauchMining, args = [])
             consensusThread.start()
         """
-
     @classmethod
     def fromJsonDict(cls, dict):
         difficulty = dict['_difficulty']
@@ -535,10 +563,10 @@ class Blockchain:
     def toJson2(self):
         return json.dumps([self._blocks, self._transactionBuffer])
 
-    def last_element(self):
+    def lastElement(self):
         return self._blocks[len(self._blocks) - 1]
 
-    def _add_genesis_block(self):
+    def _addGenesisBlock(self):
         genTrans = Transaction("none", None, "")
         genBlock = Block(time.time(), [genTrans], "0")
         return genBlock
@@ -547,18 +575,15 @@ class Blockchain:
         """Returns the difficulty level."""
         return self._difficulty
 
-    def loc_add_transaction(transaction):
-        self._transactionBuffer.append(transaction)
-
-    def add_transaction(self, transaction):
+    def addTransaction(self, transaction):
         """Adds a transaction to your current list of transactions,
         and broadcasts it to your Blockchain network.
         If the `mine` method is called, it will collect the current list
         of transactions, and attempt to mine a block with those.
         """
 
+        self._transactionBuffer.append(transaction)
         self._peer.clientSide.broadcastTransaction(transaction)
-        self.loc_add_transaction(transaction)
 
     def lauchMining():
         while True:
@@ -571,7 +596,7 @@ class Blockchain:
                 self._newBlock = None
             #at the same time listen server to know if other found H block
             else:
-                if self.get_blockReceived().is_valid():
+                if self.getBlockReceived().isValid():
                     self._blocks.append(block_found)
                     self._newBlock = None
                 else:
@@ -585,7 +610,7 @@ class Blockchain:
             print('Start mining new block...')
             self._newBlock = Block(time.time(), self._transactionBuffer.copy())
             self._transactionBuffer = []
-            newBlock.set_previous_hash(self.last_element().get_hash())
+            newBlock.setPreviousHash(self.lastElement().getHash())
 
         else:
             print('Resume block mining...')
@@ -599,13 +624,13 @@ class Blockchain:
         else:
             return None
 
-    def set_blockReceived(self, jsonBlock):
+    def setBlockReceived(self, jsonBlock):
         self._newBlock.blockReceived = self.Block.fromJsonDict(jsonBlock)
 
-    def get_blockReceived(self):
+    def getBlockReceived(self):
         return self._newBlock.blockReceived
 
-    def is_valid(self):
+    def isValid(self):
         """Checks if the current state of the blockchain is valid.
 
         Meaning, are the sequence of hashes, and the proofs of the
@@ -615,23 +640,23 @@ class Blockchain:
             current = self._blocks[i]
             prev = self._blocks[i - 1]
             # check if the current hash pointer points to the correct element
-            if not current.is_valid():
+            if not current.isValid():
                 return False
-            if current.get_previous_hash() != prev.compute_hash():
+            if current.getPreviousHash() != prev.computeHash():
                 return False
             # check is the node hasn't been modified
-            if current.get_hash() != current.compute_hash():
+            if current.getHash() != current.computeHash():
                 return False
         return True
 
-    def is_inside(self, key, get=False, all=None):
+    def isInside(self, key, get=False, all=None):
         for i in reversed(range(len(self._blocks))):
             if all is None:
                 new_all = None
             else:
                 new_all = []
             current = self._blocks[i]
-            resutl = current.is_inside(key, get, new_all)
+            resutl = current.isInside(key, get, new_all)
             if get:
                 if all is None:
                     if resutl[0]:
@@ -701,7 +726,7 @@ def main(args):
     t1 = Transaction("pierre1", "key4", "some value set to 0")
     transactionBuffer.append(t1)
     bc= Blockchain("bootstrap", 3)
-    bc.add_transaction(t1)
+    bc.addTransaction(t1)
     bc.mine()
     bc2 = Blockchain.fromJsonDict(json.loads(bc.toJson()))
     print(bc2.toJson() == bc.toJson())
@@ -745,8 +770,8 @@ def main(args):
     t1 = Transaction("pierre1", "key4", "some value set to 0")
     t2 = Transaction("pierre2", "key4", "some key value")
     bc= Blockchain("bootstrap", 3)
-    bc.add_transaction(t1)
-    bc.add_transaction(t2)
+    bc.addTransaction(t1)
+    bc.addTransaction(t2)
     bc.mine()
     bc2 = Blockchain.fromJsonDict(json.loads(bc.toJson()))
     print(bc2.toJson() == bc.toJson())
@@ -797,9 +822,9 @@ def main(args):
     t2 = Transaction("pierre2", "key4", "some key value")
     t3 = Transaction("pierre3", "key44", "some other value")
     bc= Blockchain("bootstrap", 3)
-    bc.add_transaction(t1)
-    bc.add_transaction(t2)
-    bc.add_transaction(t3)
+    bc.addTransaction(t1)
+    bc.addTransaction(t2)
+    bc.addTransaction(t3)
     bc.mine()
     bc2 = Blockchain.fromJsonDict(json.loads(bc.toJson()))
     print(bc2.toJson() == bc.toJson())
@@ -854,9 +879,9 @@ def main(args):
     t3 = Transaction("pierre3", "key44", "some other value")
     t4 = Transaction("pierre3", "key44", "some random other value")
     bc= Blockchain("bootstrap", 3)
-    bc.add_transaction(t1)
-    bc.add_transaction(t2)
-    bc.add_transaction(t3)
+    bc.addTransaction(t1)
+    bc.addTransaction(t2)
+    bc.addTransaction(t3)
     bc.mine()
     bc2 = Blockchain.fromJsonDict(json.loads(bc.toJson()))
     print(bc2.toJson() == bc.toJson())
@@ -870,20 +895,20 @@ def main(args):
     '''
     bc= Blockchain("bootstrap", 3)
     t1 = Transaction("pierre1", "key4", "some value set to 0")
-    bc.add_transaction(t1)
+    bc.addTransaction(t1)
     t2 = Transaction("pierre2", "key4", "some key value")
-    bc.add_transaction(t2)
+    bc.addTransaction(t2)
     t3 = Transaction("pierre3", "key44", "some other value")
-    bc.add_transaction(t3)
+    bc.addTransaction(t3)
     t4 = Transaction("pierre3", "key44", "some random other value")
-    bc.add_transaction(t4)
+    bc.addTransaction(t4)
     bc.mine()
     t21 = Transaction("pierre4", "key4", "some value set to 0")
-    bc.add_transaction(t21)
+    bc.addTransaction(t21)
     t22 = Transaction("pierre5", "key4", "some key value")
-    bc.add_transaction(t22)
+    bc.addTransaction(t22)
     t23 = Transaction("pierre6", "key44", "some other value")
-    bc.add_transaction(t23)
+    bc.addTransaction(t23)
     bc.mine()
     bc2 = Blockchain.fromJsonDict(json.loads(bc.toJson()))
     print(bc2.toJson() == bc.toJson())
@@ -893,29 +918,29 @@ def main(args):
     '''
     bc= Blockchain("bootstrap", 3)
     t1 = Transaction("pierre1", "key4", "some value set to 0")
-    bc.add_transaction(t1)
+    bc.addTransaction(t1)
     t2 = Transaction("pierre2", "key4", "some key value")
-    bc.add_transaction(t2)
+    bc.addTransaction(t2)
     t3 = Transaction("pierre3", "key44", "some other value")
-    bc.add_transaction(t3)
+    bc.addTransaction(t3)
     t4 = Transaction("pierre3", "key44", "some random other value")
-    bc.add_transaction(t4)
+    bc.addTransaction(t4)
     bc.mine()
     t21 = Transaction("pierre4", "key4", "some value set to 0")
-    bc.add_transaction(t21)
+    bc.addTransaction(t21)
     t22 = Transaction("pierre5", "key4", "some key value")
-    bc.add_transaction(t22)
+    bc.addTransaction(t22)
     t23 = Transaction("pierre6", "key44", "some other value")
-    bc.add_transaction(t23)
+    bc.addTransaction(t23)
     bc.mine()
     t31 = Transaction("pierre7", "key4", "some value set to 0")
-    bc.add_transaction(t31)
+    bc.addTransaction(t31)
     t32 = Transaction("pierre8", "key4", "some key value")
-    bc.add_transaction(t32)
+    bc.addTransaction(t32)
     t33 = Transaction("pierre9", "key44", "some other value")
-    bc.add_transaction(t33)
+    bc.addTransaction(t33)
     t34 = Transaction("pierre10", "key44", "some random other value")
-    bc.add_transaction(t34)
+    bc.addTransaction(t34)
     bc.mine()
     bc2 = Blockchain.fromJsonDict(json.loads(bc.toJson()))
     print(bc2.toJson() == bc.toJson())
