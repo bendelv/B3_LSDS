@@ -86,3 +86,14 @@ the reference paper the amount of work is exponential w.r.t the number of 0s.
 - why transactionBuffer in arg? always empty when init or bootstrap should know about it?
 ---> Take the H key of the each node on the network, make the esperance and retrieve the blockchain and the buffer of one of the node in the esperance
 - At what time we mine ?
+
+##TODO TOMORROW:
+- method getH of blocks[len(blocks) - 1].hash
+- get to know who responded with H
+- adapt code to get esperance of H
+- correction to contact a peer with good H
+
+- Verify mine operations (Blockchain)
+
+- broadcast block_found PEER
+- broadcast transaction PEER
