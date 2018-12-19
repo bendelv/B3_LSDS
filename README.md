@@ -78,7 +78,7 @@ the reference paper the amount of work is exponential w.r.t the number of 0s.
 - [x] Perfect link
 - [x] fail silent detector
 
-##Questions
+## Questions
 ### High lvl app
 - should Blockchain and Peer be aware of app? If not, Blockchain ask peer to broadcast new transaction but at the other end, peer can't buffer received transaction..
 
@@ -87,7 +87,7 @@ the reference paper the amount of work is exponential w.r.t the number of 0s.
 ---> Take the H key of the each node on the network, make the esperance and retrieve the blockchain and the buffer of one of the node in the esperance
 - At what time we mine ?
 
-##TODO TOMORROW:
+## TODO TOMORROW:
 - method getH of blocks[len(blocks) - 1].hash
 - get to know who responded with H
 - adapt code to get esperance of H
