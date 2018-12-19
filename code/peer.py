@@ -32,8 +32,8 @@ class Peer:
         self.serverSide.disconnect()
         self.clientSide.disconnect()
 
-    def broadcast_foundBlock(self, block):
-        self.clientSide.broadcast_foundBlock(block)
+    def broadcastFoundBlock(self, block):
+        self.clientSide.broadcastFoundBlock(block)
 
 
 class Server:
@@ -69,11 +69,9 @@ class Server:
         self.peer.pfd.add_node(objNode[0]['msg'])
         self.peer.rb.rbHandler(objNode[1], 'POST', '/rb/addNode', objNode[0])
 
-        """
-        blocks = self.peer._blockchain._blocks
-        HblockChain = blocks[len(blocks) - 1]._hash
-        return json.dumps(HblockChain)
-        """
+        if self._blockchain.length() > 1:
+            return json.dumps(self._blockchain.getHash())
+
         return json.dumps('')
 
     def rmNode(self):
@@ -81,7 +79,6 @@ class Server:
         self.peer.rb.rbHandler(objNode[1], 'DELETE', '/rb/rmNode', objNode[0])
         self.peer.pfd.rm_node(objNode[0]['msg'])
         return json.dumps('')
-
     #To be tested when broadcast available
     def addTransaction(self):
         transaction = request.get_json()
@@ -114,7 +111,7 @@ class Client:
         self.peer.pfd.add_nodes(objNodes)
 
     def connectToNodes(self):
-        self.peer.rb.broadcast("POST","/rb/addNode", self.bootsLoc)
+        hashes = self.peer.rb.broadcast("POST","/rb/addNode", self.bootsLoc)
 
         """
         listH = np.zeros((len(objH), 2))
@@ -137,7 +134,7 @@ class Client:
         #TODO when broadcast available
         pass
 
-    def broadcast_foundBlock(self, block):
+    def broadcastFoundBlock(self, block):
 
         pass
 

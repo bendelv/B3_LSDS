@@ -28,23 +28,21 @@ class FakeApplication:
 
 
 class Transaction:
-    def __init__(self, origin, key, value, timestamp=time.time()):
+    def __init__(self, key, value, timestamp=time.time()):
         """
         A transaction, in our KV setting. A transaction typically involves
         some key, value and an origin (the one who put it onto the storage).
         """
-        self._origin = origin
         self._key = key
         self._value = value
         self._timestamp = timestamp
 
     @classmethod
     def fromJsonDict(cls, dict):
-        return cls(dict['_origin'], dict['_key'], dict['_value'], dict['_timestamp'])
+        return cls(dict['_key'], dict['_value'], dict['_timestamp'])
 
     def __str__(self):
         dict = {}
-        dict["Origin"] = self._origin
         dict["Key"] = self._key
         dict["Value"] = self._value
         dict["timestamp"] = self._timestamp
@@ -515,7 +513,7 @@ class Blockchain:
         # Initialize blockchain and transactionBuffer HERE
         # Initialize the properties.
         self._difficulty = difficulty
-        """
+
         if blocks is None:
             self._blocks = [self._addGenesisBlock()]
         else:
@@ -531,7 +529,7 @@ class Blockchain:
         if application.miner = True:
             consensusThread = Thread(target = self.lauchMining, args = [])
             consensusThread.start()
-        """
+
     @classmethod
     def fromJsonDict(cls, dict):
         difficulty = dict['_difficulty']
@@ -566,10 +564,16 @@ class Blockchain:
     def lastElement(self):
         return self._blocks[len(self._blocks) - 1]
 
+    def getHash(self):
+        return lastElement.getHash()
+
     def _addGenesisBlock(self):
-        genTrans = Transaction("none", None, "")
-        genBlock = Block(time.time(), [genTrans], "0")
+        genTrans = Transaction("", "", 0)
+        genBlock = Block(0, [genTrans], "0")
         return genBlock
+
+    def length(self):
+        return len(self._blocks)
 
     def difficulty(self):
         """Returns the difficulty level."""
