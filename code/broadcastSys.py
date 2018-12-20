@@ -112,10 +112,11 @@ class ReliableBroadcast(object):
         if own is None:
             own = self.own
         respList = []
-
         self.pfdHandler()
+
         for p in self.alive:
-            respList.append([self.pl.send(own, p, method, url, msg), p])
+            if p is not own:
+                respList.append([self.pl.send(own, p, method, url, msg), p])
 
         return respList
     #upon event beb deliver

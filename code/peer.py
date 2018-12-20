@@ -131,6 +131,10 @@ class Client:
 
     def connectToNodes(self):
         res = self.peer.rb.broadcast("POST","/rb/addNode", self.bootsLoc)
+        
+        if not res:
+            return
+
         hashes = np.array([x[0][0] for x in res],dtype=object)
         processes = np.array([x[1] for x in res],dtype=object)
         all_transactions = np.array([x[0][1] for x in res],dtype=object)

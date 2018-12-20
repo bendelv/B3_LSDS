@@ -711,7 +711,8 @@ class Blockchain:
             self.addTransaction(t, broadcast=False)
 
     def addTransaction(self, transaction, broadcast=True):
-        """Adds a transaction to your current list of transactions,
+        """
+        Adds a transaction to your current list of transactions,
         and broadcasts it to your Blockchain network.
         If the `mine` method is called, it will collect the current list
         of transactions, and attempt to mine a block with those.
@@ -719,15 +720,15 @@ class Blockchain:
         if transaction not in self._transactionBuffer:
             self._transactionBuffer.append(transaction)
         if broadcast:
+            #MODIF HERE
+            self.addLocTransaction(transaction.toJson())
             self._peer.broadcastTransaction(transaction)
+
+    def addLocTransaction(self, json_transaction):
+        self._transactionBuffer.append(Transaction.fromJsonDict(json.loads(json_transaction)))
 
     def getTransactions(self):
         return self._transactionBuffer
-
-    def addLocTransaction(self, transaction):
-        print(Transaction.fromJsonDict(json.loads(transaction)))
-        self._transactionBuffer.append(Transaction.fromJsonDict(json.loads(transaction)))
-        print(self._transactionBuffer)
 
     def lauchMining(self):
         while True:
@@ -735,6 +736,8 @@ class Blockchain:
             block_found = self.mine()
             #if H found broadcast
             if block_found is not None:
+                #MODIF HERE
+                self.addLocBlock(block_found)
                 self.broadcastFoundBlock(block_found)
                 self._newBlock = None
             #at the same time listen server to know if other found H block
