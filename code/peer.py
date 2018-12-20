@@ -163,7 +163,12 @@ class Client:
         pass
 
     def disconnect(self):
+<<<<<<< HEAD
+        objH = self.peer.rb.broadcast("DELETE", "/rb/rmNode", self.bootsLoc)
+        self._peer.pl.send()
+=======
         pass
+>>>>>>> 881875b67f6bb949e1b2298a9cb5ef22b9495ac8
 
 
 def main(args):
