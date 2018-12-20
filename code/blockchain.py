@@ -478,6 +478,7 @@ class Block:
             self._transactionsHash = transactionsHash
 
         self._previousHash = previousHash
+        self.flag_received = False
 
         if nonce is not None:
             self._nonce = nonce
@@ -491,8 +492,6 @@ class Block:
             self._hash = hash
         else:
             self._hash = self.computeHash()
-
-        self.blockReceived = None
 
     @classmethod
     def fromJsonDict(cls, dict):
@@ -563,7 +562,7 @@ class Block:
         """
 
         "self._nonce = randint(0, 1000)"
-        while self._hash[0:difficulty] != "0"*difficulty and self.blockReceived is None:
+        while self._hash[0:difficulty] != "0"*difficulty and self.flag_received is True:
             self._nonce += 1
             self._hash = self.computeHash()
         print("="*25)
@@ -571,6 +570,8 @@ class Block:
         print(self._hash)
         print(self.computeHash())
         print("="*25)
+
+        self.flag_received = False
 
     def transactions(self):
         """Returns the list of transactions associated with this block."""
@@ -599,6 +600,8 @@ class Blockchain:
         # Initialize blockchain and transactionBuffer HERE
         # Initialize the properties.
         self._difficulty = difficulty
+        self._newBlock = None
+        self._blockReceived = None
 
         if blocks is None:
             self._blocks = [self._addGenesisBlock()]
@@ -633,7 +636,7 @@ class Blockchain:
 
         self._peer = peer.Peer(self, application._bootstrap, application._bootsloc)
 
-        if application.isMiner == True:
+        if application._miner is True:
             consensusThread = Thread(target = self.lauchMining, args = [])
             consensusThread.start()
 
@@ -727,19 +730,25 @@ class Blockchain:
     def getTransactions(self):
         return self._transactionBuffer
 
-    def lauchMining(self):
+
+    def addLocTransaction(self, transaction):
+        print(Transaction.fromJsonDict(json.loads(transaction)))
+        self._transactionBuffer.append(Transaction.fromJsonDict(json.loads(transaction)))
+        print(self._transactionBuffer)
+
+    def lauchMining():
         while True:
             #mine block
             block_found = self.mine()
             #if H found broadcast
             if block_found is not None:
-                self._peer.broadcast_foundBlock(block_found)
-                self._blocks.append(block_found)
+                self.broadcastFoundBlock(block_found)
                 self._newBlock = None
             #at the same time listen server to know if other found H block
             else:
                 if self.getBlockReceived().isValid():
-                    self._blocks.append(block_found)
+                    self.addLocBlock(self.getBlockReceived())
+                    self.setBlockReceived(None)
                     self._newBlock = None
                 else:
                     print("Block received non valid..")
@@ -761,18 +770,29 @@ class Blockchain:
         self._newBlock.mine(self._difficulty)
         print(self._newBlock.isValid())
 
-        if self._newBlock.blockReceived is None:
+        if self.getBlockReceived is None:
             print('Block mined')
             return self._newBlock
 
         else:
             return None
 
-    def setBlockReceived(self, jsonBlock):
-        self._newBlock.blockReceived = self.Block.fromJsonDict(jsonBlock)
+    def broadcastFoundBlock(self,block_found):
+        #print('BC :', type(block_found), block_found)
+        self._peer.broadcastFoundBlock(block_found)
+
+    def setFlagReceived(self):
+        self._blockReceived.flag_received = True
+
+    def addLocBlock(self, jsonBlock):
+         self._blocks.append(Block.fromJsonDict(jsonBlock))
 
     def getBlockReceived(self):
-        return self._newBlock.blockReceived
+        return self._blockReceived
+
+    def setBlockReceived(self, block):
+        print(Block.fromJsonDict(json.loads(block)))
+        self._blockReceived = Block.fromJsonDict(json.loads(block))
 
     def isValid(self):
         """Checks if the current state of the blockchain is valid.
@@ -1114,7 +1134,7 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '--bootsloc', '-b',
-        default="8001")
+        '--port', '-b',
+        default="8000")
     args = parser.parse_args()
     main(args)

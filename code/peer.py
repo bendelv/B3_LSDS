@@ -29,14 +29,15 @@ class Peer:
         pass
 
     def removeConnection(self):
-        self.serverSide.disconnect()
         self.clientSide.disconnect()
+        self.serverSide.disconnect()
 
     def broadcastFoundBlock(self, block):
         self.clientSide.broadcastFoundBlock(block)
 
     def broadcastTransaction(self, transaction):
         self.client.broadcastTransaction()
+
 
 class Server:
     def __init__(self, address, peer):
@@ -55,7 +56,7 @@ class Server:
         self.app.add_url_rule('/rb/blockMined', 'blockMined', self.blockMined, methods = ['POST'])
         self.app.add_url_rule('/askBC', 'askBC', self.askBC, methods = ['GET'])
         self.app.add_url_rule('/view', 'view', self.view, methods = ['GET'])
-
+        self.app.add_url_rule('/disconnect', 'disconnect', self.disconnect, methods = ['POST'])
         myList = address.split(':')
         host = myList[0]
         port = myList[1]
@@ -87,15 +88,18 @@ class Server:
         return json.dumps('')
     #To be tested when broadcast available
     def addTransaction(self):
-        transaction = request.get_json()
-        transaction = blockchain.Transaction.fromJsonDict(json.loads(transaction))
-        peer._blockchain.loc_add_transaction(transaction)
+        objTransaction = request.get_json()
+        self.peer.rb.rbHandler(objTransaction[1], 'POST', '/rb/addTransaction', objTransaction[0])
+        self.peer._blockchain.addLocTransaction(objTransaction[0]['msg'])
+        return json.dumps('')
 
     def blockMined(self):
-        block = request.get_json()
-        rb.hander(method, url, block)
-        self._blockchain.set_blockReceived(block)
-        pass
+        objBlock = request.get_json()
+        print('server :', type(objBlock[0]), objBlock[0])
+        self.peer.rb.rbHandler(objBlock[1], 'POST', '/rb/blockMined', objBlock[0])
+        self.peer._blockchain.setBlockReceived(objBlock[0]['msg'])
+        self.peer._blockchain.setFlagReceived()
+        return json.dumps('')
 
     def askBC(self):
         return self.peer._blockchain.toJson2()
@@ -105,8 +109,15 @@ class Server:
         return title + self.peer._blockchain.toHtml()
 
     def disconnect(self):
-        #self.app.terminate()
-        self.app.join()
+        self.shutdown_server()
+        return 'Server shutting down...'
+
+    def shutdown_server(self):
+        func = request.environ.get('werkzeug.server.shutdown')
+        if func is None:
+            raise RuntimeError('Not running with the Werkzeug Server')
+        func()
+
 
 class Client:
     def __init__(self, bootsDist, bootsLoc, peer):
@@ -143,21 +154,21 @@ class Client:
         self.peer._blockchain.setStorage(blocks)
 
     def broadcastTransaction(self):
-        #TODO when broadcast available
+        self.peer.rb.broadcast("POST", '/rb/addTransaction', transaction.toJson())
         pass
 
     def broadcastFoundBlock(self, block):
-
+        print('client :', type(block), block)
+        self.peer.rb.broadcast("POST", '/rb/blockMined', block.toJson())
         pass
 
     def disconnect(self):
-        objH = self.peer.rb.broadcast("DELETE", "/rb/rmNode", self.bootsLoc)
-
+        pass
 
 def main(args):
 
-    bootsDist = "10.9.172.251:8000"
-    bootsLoc = "10.9.172.251:{}".format(args.bootsloc)
+    bootsDist = "192.168.1.41:8000"
+    bootsLoc = "192.168.1.41:{}".format(args.bootsloc)
     peer = Peer(bootsDist, bootsLoc)
 
     return 0
@@ -165,7 +176,7 @@ def main(args):
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument(
-        '--bootsloc',
-        default="8001")
+        '--port',
+        default="8000")
     args = parser.parse_args()
     main(args)
