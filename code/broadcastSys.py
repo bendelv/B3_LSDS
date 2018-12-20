@@ -115,7 +115,7 @@ class ReliableBroadcast(object):
 
         self.pfdHandler()
         for p in self.alive:
-            respList.append(self.pl.send(own, p, method, url, msg))
+            respList.append([self.pl.send(own, p, method, url, msg), p])
 
         return respList
     #upon event beb deliver
