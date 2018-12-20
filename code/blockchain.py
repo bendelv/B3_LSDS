@@ -24,7 +24,25 @@ class FakeApplication:
         self._bootsloc = bootsloc
         self._bootstrap = bootstrap
         self._miner = miner
-        self._blockchain = Blockchain(self)
+        ""
+        transactionBuffer1 = []
+        transactionB = []
+        t1 = Transaction('1', "Guy")
+        t2 = Transaction('2', "loves")
+        transactionBuffer1.append(t1)
+        transactionB.append(t2)
+        block = Block(time.time(), transactionBuffer1, "")
+
+        self._blockchain = Blockchain(self, difficulty = 1, blocks = [block], transactionBuffer = transactionB)
+        time.sleep(3)
+        transactionBuffer3 = []
+        t3 = Transaction('3', "Benyboy")
+        transactionBuffer3.append(t3)
+
+        self._blockchain.addTransaction(t3)
+        time.sleep(3)
+
+        self._blockchain.broadcastFoundBlock(block)
 
 
 class Transaction:
@@ -424,6 +442,7 @@ class Block:
             self._transactionsHash = transactionsHash
 
         self._previousHash = previousHash
+        self.flag_received = False
 
         if nonce is not None:
             self._nonce = nonce
@@ -435,7 +454,6 @@ class Block:
         else:
             self._hash = self.computeHash()
 
-        self.blockReceived = None
     @classmethod
     def fromJsonDict(cls, dict):
         notrans = dict['_notrans']
@@ -485,9 +503,11 @@ class Block:
         """
 
         "self._nonce = randint(0, 1000)"
-        while self._hash[0:difficulty] != "0"*difficulty and self.blockReceived is None:
+        while self._hash[0:difficulty] != "0"*difficulty and self.flag_received is True:
             self._nonce += 1
             self._hash = self.computeHash()
+
+        self.flag_received = False
 
     def transactions(self):
         """Returns the list of transactions associated with this block."""
@@ -513,6 +533,8 @@ class Blockchain:
         # Initialize blockchain and transactionBuffer HERE
         # Initialize the properties.
         self._difficulty = difficulty
+        self._newBlock = None
+        self._blockReceived = None
 
         if blocks is None:
             self._blocks = [self._addGenesisBlock()]
@@ -524,9 +546,7 @@ class Blockchain:
         else:
             self._transactionBuffer = transactionBuffer
 
-        self._newBlock = None
-
-        if application.miner = True:
+        if application._miner is True:
             consensusThread = Thread(target = self.lauchMining, args = [])
             consensusThread.start()
 
@@ -586,8 +606,12 @@ class Blockchain:
         of transactions, and attempt to mine a block with those.
         """
 
-        self._transactionBuffer.append(transaction)
         self._peer.clientSide.broadcastTransaction(transaction)
+
+    def addLocTransaction(self, transaction):
+        print(Transaction.fromJsonDict(json.loads(transaction)))
+        self._transactionBuffer.append(Transaction.fromJsonDict(json.loads(transaction)))
+        print(self._transactionBuffer)
 
     def lauchMining():
         while True:
@@ -595,13 +619,13 @@ class Blockchain:
             block_found = self.mine()
             #if H found broadcast
             if block_found is not None:
-                self._peer.broadcast_foundBlock(block_found)
-                self._blocks.append(block_found)
+                self.broadcastFoundBlock(block_found)
                 self._newBlock = None
             #at the same time listen server to know if other found H block
             else:
                 if self.getBlockReceived().isValid():
-                    self._blocks.append(block_found)
+                    self.addLocBlock(self.getBlockReceived())
+                    self.setBlockReceived(None)
                     self._newBlock = None
                 else:
                     print("Block received non valid..")
@@ -621,18 +645,29 @@ class Blockchain:
 
         self._newBlock.mine(self._difficulty)
 
-        if self._newBlock.blockReceived is None:
+        if self.getBlockReceived is None:
             print('Block mined')
             return newBlock
 
         else:
             return None
 
-    def setBlockReceived(self, jsonBlock):
-        self._newBlock.blockReceived = self.Block.fromJsonDict(jsonBlock)
+    def broadcastFoundBlock(self,block_found):
+        #print('BC :', type(block_found), block_found)
+        self._peer.broadcastFoundBlock(block_found)
+
+    def setFlagReceived(self):
+        self._blockReceived.flag_received = True
+
+    def addLocBlock(self, jsonBlock):
+         self._blocks.append(Block.fromJsonDict(jsonBlock))
 
     def getBlockReceived(self):
-        return self._newBlock.blockReceived
+        return self._blockReceived
+
+    def setBlockReceived(self, block):
+        print(Block.fromJsonDict(json.loads(block)))
+        self._blockReceived = Block.fromJsonDict(json.loads(block))
 
     def isValid(self):
         """Checks if the current state of the blockchain is valid.
@@ -952,8 +987,8 @@ def main(args):
     '''
 
 
-    bootstrap = "192.168.1.56:8000"
-    bootsloc = "192.168.1.56:{}".format(args.bootsloc)
+    bootstrap = "192.168.1.41:8000"
+    bootsloc = "192.168.1.41:{}".format(args.port)
     app = FakeApplication(bootstrap, bootsloc, False, 1)
 
     input()
@@ -962,7 +997,7 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '--bootsloc', '-b',
-        default="8001")
+        '--port', '-b',
+        default="8000")
     args = parser.parse_args()
     main(args)
