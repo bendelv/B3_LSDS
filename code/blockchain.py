@@ -566,7 +566,7 @@ class Block:
             self._nonce += 1
             self._hash = self.computeHash()
         print("="*25)
-        print(self.blockReceived)
+        print(self.flag_received)
         print(self._hash)
         print(self.computeHash())
         print("="*25)
@@ -730,13 +730,12 @@ class Blockchain:
     def getTransactions(self):
         return self._transactionBuffer
 
-
     def addLocTransaction(self, transaction):
         print(Transaction.fromJsonDict(json.loads(transaction)))
         self._transactionBuffer.append(Transaction.fromJsonDict(json.loads(transaction)))
         print(self._transactionBuffer)
 
-    def lauchMining():
+    def lauchMining(self):
         while True:
             #mine block
             block_found = self.mine()
@@ -770,7 +769,7 @@ class Blockchain:
         self._newBlock.mine(self._difficulty)
         print(self._newBlock.isValid())
 
-        if self.getBlockReceived is None:
+        if self.getBlockReceived() is None:
             print('Block mined')
             return self._newBlock
 
@@ -1113,10 +1112,10 @@ def main(args):
 
 
     bootstrap = "192.168.1.60:8000"
-    bootsloc = "192.168.1.60:{}".format(args.bootsloc)
+    bootsloc = "192.168.1.60:{}".format(args.port)
 
     tBuff = None
-    if args.bootsloc == "8000":
+    if args.port == "8000":
         tBuff = []
         #t1 = Transaction("key4", "some value set to 0")
         #tBuff.append(t1)
@@ -1134,7 +1133,7 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '--port', '-b',
+        '--port', '-p',
         default="8000")
     args = parser.parse_args()
     main(args)
