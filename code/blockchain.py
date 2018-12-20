@@ -32,6 +32,8 @@ class FakeApplication:
     def isMiner(self):
         return self._miner
 
+    def addTransaction(self, transaction):
+        self._blockchain.addTransaction(transaction)
 
 class Transaction:
     def __init__(self, key, value, timestamp=time.time()):
@@ -468,7 +470,7 @@ class Block:
                 self._notrans = True
                 self._transactionsHash = None
             else:
-                self._transactions = MerkleTree(transactions, True)
+                self._transactions = MerkleTree(transactions, genesis)
                 self._notrans = False
                 self._transactionsHash = self._transactions.getHash()
         else:
@@ -524,7 +526,7 @@ class Block:
         myStr += "</ul>"
         myStr += "<h3>transactions</h3>"
         if self._notrans:
-            myStr += "NO TRANSACTION IN THIS BLOCK"
+            myStr += "<p>NO TRANSACTION IN THIS BLOCK <br></p>"
         else:
             myStr += "<table style=\"width:100%\">"
             myStr += "<tr>"
@@ -570,9 +572,12 @@ class Block:
     def isValid(self):
         if self._hash != self.computeHash():
             return False
-        if self._transactionsHash != self._transactions.getHash():
-            return False
-        return self._transactions.isValid()
+        if self._transactions is not None:
+            if self._transactionsHash != self._transactions.getHash():
+                return False
+            return self._transactions.isValid()
+        else:
+            return True
 
     def isInside(self, key, get=False, all=None):
         return self._transactions.isInside(key, get, all)
@@ -592,6 +597,7 @@ class Blockchain:
         self._difficulty = difficulty
         self._newBlock = None
         self._blockReceived = None
+        self._miner = application._miner
 
         if blocks is None:
             self._blocks = [self._addGenesisBlock()]
@@ -606,7 +612,7 @@ class Blockchain:
         self._newBlock = None
 
         self._peer = peer.Peer(self, application._bootstrap, application._own)
-        if application._miner:
+        if self._miner:
             print("START MINING")
             consensusThread = Thread(target = self.lauchMining, args = [])
             consensusThread.start()
@@ -695,8 +701,7 @@ class Blockchain:
         return self.lastElement().getHash()
 
     def _addGenesisBlock(self):
-        genTrans = Transaction("", "", 0)
-        genBlock = Block(0, [genTrans], "0", genesis=True)
+        genBlock = Block(0, None, "0", genesis=True)
         return genBlock
 
     def length(self):
@@ -780,7 +785,7 @@ class Blockchain:
         self._peer.broadcastFoundBlock(block_found)
 
     def setFlagReceived(self):
-        self._blockReceived.flag_received = True
+        self._newBlock.flag_received = True
 
     def addLocBlock(self, block):
         self._blocks.append(block)
@@ -789,8 +794,15 @@ class Blockchain:
         return self._blockReceived
 
     def setBlockReceived(self, block):
-        self._blockReceived = Block.fromJsonDict(json.loads(block))
-
+        if block is None:
+            self._blockReceived = block
+        else:
+            block = Block.fromJsonDict(json.loads(block))
+            if self._miner:
+                self._blockReceived = block
+                self.setFlagReceived()
+            else:
+                self.addLocBlock(block)
 
     def isValid(self):
         """Checks if the current state of the blockchain is valid.
@@ -1124,10 +1136,19 @@ def main(args):
         tBuff.append(t3)
         t4 = Transaction("key44", "some random other value")
         tBuff.append(t4)
-    app = FakeApplication(bootstrap, bootsloc, args.miner, 4, transactionBuffer=tBuff)
+    app = FakeApplication(bootstrap, bootsloc, args.miner, 5, transactionBuffer=tBuff)
 
     input()
-    app._blockchain._peer.removeConnection()
+    if args.port == "8000":
+        t1 = Transaction("Guy", "Raclette?")
+        app.addTransaction(t1)
+        t2 = Transaction("Ben", "OUII")
+        app.addTransaction(t2)
+        t3 = Transaction("Andrea", "Lovely")
+        app.addTransaction(t3)
+        t4 = Transaction("Antoine", "Ouais mais pas longtemps je dois bosser demain")
+        app.addTransaction(t4)
+    #app._blockchain._peer.removeConnection()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -1137,7 +1158,7 @@ if __name__ == "__main__":
 
     parser.add_argument(
         '--miner', '-m',
-        default=True)
+        action='store_true')
 
     args = parser.parse_args()
     main(args)

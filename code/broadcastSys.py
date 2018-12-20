@@ -115,7 +115,7 @@ class ReliableBroadcast(object):
         self.pfdHandler()
 
         for p in self.alive:
-            if p is not own:
+            if p is not self.own:
                 respList.append([self.pl.send(own, p, method, url, msg), p])
 
         return respList
@@ -146,6 +146,7 @@ class ReliableBroadcast(object):
                 #check if p even send one message
                 if p in self.msg_from.keys():
                     for msg in self.msg_from[p]:
+                        # TODO TRY this code
                         self._broadcast(msg['method'], msg['url'], msg['msg'], p)
 
 
