@@ -281,13 +281,10 @@ class MerkleNode:
 
     def isValid(self):
         if self._hash != self.computeHash():
-            print("NODE")
             return False
         if self._leftHash != self._left.getHash():
-            print("LEFT NODE")
             return False
         if self._rightHash != self._right.getHash():
-            print("RIGHT NODE")
             return False
         else:
             return self._left.isValid() and self._right.isValid()
@@ -447,10 +444,8 @@ class MerkleTree:
 
     def isValid(self):
         if self._hash != self.computeHash():
-            print("TREE")
             return False
         if self._treeHash != self._tree.getHash():
-            print("TREE NODES")
             return False
         return self._tree.isValid()
 
@@ -510,7 +505,7 @@ class Block:
     def __str__(self):
         dict = {}
         dict['timestamp'] = self._timestamp
-        dict['hash'] = self._hash
+        dict['transHash'] = self._transactionsHash
         dict['nonce'] = self._nonce
         dict['previousHash'] = self._previousHash
         return json.dumps(dict, indent = 4)
@@ -549,7 +544,7 @@ class Block:
 
     def computeHash(self):
         """Compute hash value of the current block"""
-        hashString = self.toJson()
+        hashString = str(self)
         hash_object = hashlib.sha256(hashString.encode('utf-8'))
         hex_dig = hash_object.hexdigest()
         return hex_dig
@@ -560,16 +555,9 @@ class Block:
         self._transactions.mine(difficulty)
         print("Transactions mined")
         """
-
-        "self._nonce = randint(0, 1000)"
-        while self._hash[0:difficulty] != "0"*difficulty and self.flag_received is True:
+        while self._hash[0:difficulty] != "0"*difficulty and self.flag_received is False:
             self._nonce += 1
             self._hash = self.computeHash()
-        print("="*25)
-        print(self.flag_received)
-        print(self._hash)
-        print(self.computeHash())
-        print("="*25)
 
         self.flag_received = False
 
@@ -619,14 +607,7 @@ class Blockchain:
         ############
         ############
         # TMP !!!! TO REMOVE AFTER!!!
-        for block in self._blocks:
-            print(block)
-        print(self.isValid())
         self._blocks.append(self.mine())
-        for block in self._blocks:
-            print(block.toJson())
-        print(self.isValid())
-        sys.exit()
         self._transactionBuffer = transactionBuffer
         ############
         ############
@@ -765,9 +746,7 @@ class Blockchain:
         else:
             print('Resume block mining...')
 
-        print(self._newBlock.isValid())
         self._newBlock.mine(self._difficulty)
-        print(self._newBlock.isValid())
 
         if self.getBlockReceived() is None:
             print('Block mined')
