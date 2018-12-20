@@ -12,6 +12,7 @@ import pickle
 import json
 import argparse
 from random import randint
+from threading import Thread
 import peer
 
 
@@ -21,7 +22,7 @@ class FakeApplication:
         your blockchain. Depending whether or not the miner flag has
         been specified, you should allocate the mining process.
         """
-        self._bootsloc = bootsloc
+        self._own = bootsloc
         self._bootstrap = bootstrap
         self._miner = miner
         self._blockchain = Blockchain(self,
@@ -48,7 +49,7 @@ class Transaction:
 
     def __str__(self):
         dict = self.getDict()
-        return json.dumps(dict, indent = 4)
+        return json.dumps(dict, indent = 4, sort_keys=True)
 
     def __eq__ (self, other):
         return self._key == other._key and\
@@ -71,7 +72,7 @@ class Transaction:
         return dict
 
     def toJson(self):
-        return json.dumps(self, default=lambda o: o.__dict__, indent=4)
+        return json.dumps(self, default=lambda o: o.__dict__, indent=4, sort_keys=True)
 
     def getKey(self):
         return self._key
@@ -81,14 +82,15 @@ class Transaction:
 
 
 class MerkleLeaf:
-    def __init__(self, transaction, prefixes=None, nonce=0, hash=None, genesis=False):
+    def __init__(self, transaction, prefixes=None, nonce=None, hash=None, genesis=False ,leaf=True):
         self._transaction = transaction
         if prefixes is not None:
             self._prefixes = prefixes
         else:
             self._prefixes = self.computePrefixes()
-        if nonce != 0:
-            self.nonce = nonce
+
+        if nonce is not None:
+            self._nonce = nonce
         else:
             if genesis:
                 self._nonce = 0
@@ -98,6 +100,7 @@ class MerkleLeaf:
             self._hash = hash
         else:
             self._hash = self.computeHash()
+        self._leaf = leaf
 
     @classmethod
     def fromJsonDict(cls, dict):
@@ -112,10 +115,10 @@ class MerkleLeaf:
         dict["prefixes"] = self._prefixes
         dict["transaction"] = self._transaction.toJson()
         dict['nonce'] = self._nonce
-        return json.dumps(dict, indent=4)
+        return json.dumps(dict, indent=4, sort_keys=True)
 
     def toJson(self):
-        return json.dumps(self, default=lambda o: o.__dict__, indent=4)
+        return json.dumps(self, default=lambda o: o.__dict__, indent=4, sort_keys=True)
 
     def toHtml(self):
         return self._transaction.toHtml()
@@ -225,13 +228,13 @@ class MerkleNode:
         dict['Left Hash'] = self._leftHash
         dict['Right Hash'] = self._rightHash
         dict['nonce'] = self._nonce
-        return json.dumps(dict, indent=4)
+        return json.dumps(dict, indent=4, sort_keys=True)
 
     def toHtml(self):
         return self._left.toHtml() + self._right.toHtml()
 
     def toJson(self):
-        return json.dumps(self, default=lambda o: o.__dict__, indent=4)
+        return json.dumps(self, default=lambda o: o.__dict__, indent=4, sort_keys=True)
 
     def getHash(self):
         return self._hash
@@ -358,6 +361,7 @@ class MerkleTree:
             object._tree = MerkleNode.fromJsonDict(tree)
         object._nonce = dict['_nonce']
         object._hash = dict['_hash']
+        object._treeHash = dict['_treeHash']
         return object
 
     def __str__(self):
@@ -365,13 +369,13 @@ class MerkleTree:
         dict['one'] = self._one
         dict['nonce'] = self._nonce
         dict['root_hash'] = self._tree.getHash()
-        return json.dumps(dict, indent = 4)
+        return json.dumps(dict, indent = 4, sort_keys=True)
 
     def toHtml(self):
         return self._tree.toHtml()
 
     def toJson(self):
-        return json.dumps(self, default=lambda o: o.__dict__, indent=4)
+        return json.dumps(self, default=lambda o: o.__dict__, indent=4, sort_keys=True)
 
     def getHash(self):
         return self._hash
@@ -508,30 +512,33 @@ class Block:
         dict['transHash'] = self._transactionsHash
         dict['nonce'] = self._nonce
         dict['previousHash'] = self._previousHash
-        return json.dumps(dict, indent = 4)
+        return json.dumps(dict, indent = 4, sort_keys=True)
 
     def toHtml(self):
         myStr = "<li> Block metaData <ul>"
-        myStr += "<li>nonce :{}</li>".format(self._nonce)
-        myStr += "<li>prev hash{}</li>".format(self._previousHash)
-        myStr += "<li>hash {}</li>".format(self._hash)
-        myStr += "<li>timestamp {}</li>".format(self._timestamp)
+        myStr += "<li>nonce: {}</li>".format(self._nonce)
+        myStr += "<li>prev hash: {}</li>".format(self._previousHash)
+        myStr += "<li>hash: {}</li>".format(self._hash)
+        myStr += "<li>timestamp: {}</li>".format(self._timestamp)
+        myStr += "<li>transHash: {}</li>".format(self._transactionsHash)
         myStr += "</ul>"
+        myStr += "<h3>transactions</h3>"
         if self._notrans:
             myStr += "NO TRANSACTION IN THIS BLOCK"
         else:
-            myStr = "<table style=\"width:100%\">"
+            myStr += "<table style=\"width:100%\">"
             myStr += "<tr>"
             myStr += "<th>Key</th>"
             myStr += "<th>Value</th>"
             myStr += "<th>Timestamp</th>"
             myStr += "</tr>"
             myStr += self._transactions.toHtml()
+            myStr += "</table>"
         myStr += "</li>"
         return myStr
 
     def toJson(self):
-        return json.dumps(self, default=lambda o: o.__dict__, indent=4)
+        return json.dumps(self, default=lambda o: o.__dict__, indent=4, sort_keys=True)
 
     def setPreviousHash(self, hash):
         self._previousHash = hash
@@ -550,11 +557,6 @@ class Block:
         return hex_dig
 
     def mine(self, difficulty):
-        """
-        print("Start mining transactions...")
-        self._transactions.mine(difficulty)
-        print("Transactions mined")
-        """
         while self._hash[0:difficulty] != "0"*difficulty and self.flag_received is False:
             self._nonce += 1
             self._hash = self.computeHash()
@@ -603,21 +605,9 @@ class Blockchain:
 
         self._newBlock = None
 
-        ############
-        ############
-        ############
-        # TMP !!!! TO REMOVE AFTER!!!
-        self._blocks.append(self.mine())
-        self._transactionBuffer = transactionBuffer
-        ############
-        ############
-
-
-
-
-        self._peer = peer.Peer(self, application._bootstrap, application._bootsloc)
-
-        if application._miner is True:
+        self._peer = peer.Peer(self, application._bootstrap, application._own)
+        if application._miner:
+            print("START MINING")
             consensusThread = Thread(target = self.lauchMining, args = [])
             consensusThread.start()
 
@@ -636,14 +626,29 @@ class Blockchain:
         return cls(None, difficulty, block, transactionBuffer)
 
     def setStorage(self, objBC):
-        load = json.loads(objBC)
-        self._blocks = load[0]
-        self._transactionBuffer = load[1]
+        blocks = []
+        transactionBuffer = []
+        self._blocks = []
+        for b in objBC[0]:
+            self._blocks.append(Block.fromJsonDict(b))
+
+        for t in objBC[1]:
+            self.addTransaction(Transaction.fromJsonDict(t), False)
+        self._difficulty = objBC[2]
 
     def __str__(self):
         myStr = ""
         for block in self._blocks:
-            myStr = myStr + "\n" + "="*25 + "\n" + str(block) + "\n" + "="*25 + "\n"
+            myStr = myStr +\
+                    "\n" +\
+                    "="*25 +\
+                    "\n" +\
+                    str(block) +\
+                    "\n" +\
+                    "hash :{}".format(block.getHash()) +\
+                    "\n" +\
+                    "="*25 +\
+                    "\n"
         return myStr
 
     def toHtml(self):
@@ -666,24 +671,28 @@ class Blockchain:
                 myStr += block.toHtml()
             myStr += "</ol>"
             return myStr
-        myStr = "<h2> Transaction pending</h2>"+ print_trans(self._transactionBuffer)
+
+        myStr = "<h2> Transaction pending</h2>" + print_trans(self._transactionBuffer)
         if not self.isValid():
             return myStr + "<h2> Blockchain corrupted </h2>"
         myStr += print_chain(self._blocks)
         return myStr
 
     def toJson(self):
-        return json.dumps(self, default=lambda o: o.__dict__, indent=4)
+        return json.dumps(self, default=lambda o: o.__dict__, indent=4, sort_keys=True)
 
+    # Used when nodes conntect to network and ask for the blockchain
     def toJson2(self):
-        return json.dumps([self._blocks, self._transactionBuffer],
-                            default=lambda o: o.__dict__, indent=4)
+        return json.dumps([self._blocks,
+                           self._transactionBuffer,
+                           self._difficulty],
+                           default=lambda o: o.__dict__, indent=4, sort_keys=True)
 
     def lastElement(self):
         return self._blocks[len(self._blocks) - 1]
 
     def getHash(self):
-        return lastElement.getHash()
+        return self.lastElement().getHash()
 
     def _addGenesisBlock(self):
         genTrans = Transaction("", "", 0)
@@ -696,6 +705,10 @@ class Blockchain:
     def difficulty(self):
         """Returns the difficulty level."""
         return self._difficulty
+
+    def addTransactions(self, transactions):
+        for t in transactions:
+            self.addTransaction(t, broadcast=False)
 
     def addTransaction(self, transaction, broadcast=True):
         """Adds a transaction to your current list of transactions,
@@ -739,7 +752,11 @@ class Blockchain:
         # transactions set.
         if self._newBlock is None:
             print('Start mining new block...')
-            self._newBlock = Block(time.time(), self._transactionBuffer.copy())
+            t = self._transactionBuffer.copy()
+            if t == []:
+                self._newBlock = Block(time.time(), None)
+            else:
+                self._newBlock = Block(time.time(), self._transactionBuffer.copy())
             self._transactionBuffer = []
             self._newBlock.setPreviousHash(self.lastElement().getHash())
 
@@ -762,15 +779,15 @@ class Blockchain:
     def setFlagReceived(self):
         self._blockReceived.flag_received = True
 
-    def addLocBlock(self, jsonBlock):
-         self._blocks.append(Block.fromJsonDict(jsonBlock))
+    def addLocBlock(self, block):
+        self._blocks.append(block)
 
     def getBlockReceived(self):
         return self._blockReceived
 
     def setBlockReceived(self, block):
-        print(Block.fromJsonDict(json.loads(block)))
         self._blockReceived = Block.fromJsonDict(json.loads(block))
+
 
     def isValid(self):
         """Checks if the current state of the blockchain is valid.
@@ -1090,21 +1107,21 @@ def main(args):
     '''
 
 
-    bootstrap = "192.168.1.60:8000"
-    bootsloc = "192.168.1.60:{}".format(args.port)
+    bootstrap = "192.168.1.25:8000"
+    bootsloc = "192.168.1.25:{}".format(args.port)
 
     tBuff = None
     if args.port == "8000":
         tBuff = []
-        #t1 = Transaction("key4", "some value set to 0")
-        #tBuff.append(t1)
-        #t2 = Transaction("key4", "some key value")
-        #tBuff.append(t2)
-        #t3 = Transaction("key44", "some other value")
-        #tBuff.append(t3)
+        t1 = Transaction("key4", "some value set to 0")
+        tBuff.append(t1)
+        t2 = Transaction("key4", "some key value")
+        tBuff.append(t2)
+        t3 = Transaction("key44", "some other value")
+        tBuff.append(t3)
         t4 = Transaction("key44", "some random other value")
         tBuff.append(t4)
-    app = FakeApplication(bootstrap, bootsloc, False, 3, transactionBuffer=tBuff)
+    app = FakeApplication(bootstrap, bootsloc, args.miner, 4, transactionBuffer=tBuff)
 
     input()
     app._blockchain._peer.removeConnection()
@@ -1114,5 +1131,10 @@ if __name__ == "__main__":
     parser.add_argument(
         '--port', '-p',
         default="8000")
+
+    parser.add_argument(
+        '--miner', '-m',
+        default=True)
+
     args = parser.parse_args()
     main(args)

@@ -16,9 +16,9 @@ from broadcastSys import PerfectLink
 class Peer:
     def __init__(self, blockchain, bootsDist, bootsLoc):
         self._blockchain = blockchain
-        self.bootsLoc = bootsLoc
+        self.bootsLoc = bootsLoc# DEPRECATED USE self.own
+        self.own = "{}".format(bootsLoc)
         self.bootsDist = bootsDist
-
         self.serverSide = Server(bootsLoc, self)
         time.sleep(1)
         self.pl = PerfectLink()
@@ -66,7 +66,7 @@ class Server:
         objNode = request.get_json()
         self.peer.pfd.add_node(objNode[0])
         list = self.peer.pfd.get_alive()
-        return json.dumps(list)
+        return json.dumps(list, sort_keys=True)
 
     def addNode(self):
         objNode = request.get_json()
@@ -76,30 +76,28 @@ class Server:
         if self.peer._blockchain.length() > 1:
             return json.dumps([self.peer._blockchain.getHash(),
                                self.peer._blockchain.getTransactions()],
-                                default=lambda o: o.__dict__, indent=4)
+                                default=lambda o: o.__dict__, indent=4, sort_keys=True)
 
         return json.dumps([None, self.peer._blockchain.getTransactions()],
-                          default=lambda o: o.__dict__, indent=4)
+                          default=lambda o: o.__dict__, indent=4, sort_keys=True)
 
     def rmNode(self):
         objNode = request.get_json()
         self.peer.rb.rbHandler(objNode[1], 'DELETE', '/rb/rmNode', objNode[0])
         self.peer.pfd.rm_node(objNode[0]['msg'])
-        return json.dumps('')
+        return json.dumps('', sort_keys=True)
     #To be tested when broadcast available
     def addTransaction(self):
         objTransaction = request.get_json()
         self.peer.rb.rbHandler(objTransaction[1], 'POST', '/rb/addTransaction', objTransaction[0])
         self.peer._blockchain.addLocTransaction(objTransaction[0]['msg'])
-        return json.dumps('')
+        return json.dumps('', sort_keys=True)
 
     def blockMined(self):
         objBlock = request.get_json()
-        print('server :', type(objBlock[0]), objBlock[0])
         self.peer.rb.rbHandler(objBlock[1], 'POST', '/rb/blockMined', objBlock[0])
         self.peer._blockchain.setBlockReceived(objBlock[0]['msg'])
-        self.peer._blockchain.setFlagReceived()
-        return json.dumps('')
+        return json.dumps('', sort_keys=True)
 
     def askBC(self):
         return self.peer._blockchain.toJson2()
@@ -143,32 +141,36 @@ class Client:
 
         # No block in the chain for now
         hashes[np.where(hashes == None)] = ''
-        unique, counts = np.unique(hashes, return_counts=True)
-        best_hash = unique[np.argmax(counts)]
+        unique, index, counts = np.unique(hashes, return_counts=True, return_index=True)
+        counts, unique, index = (list(x) for x in zip(*sorted(zip(counts, unique, index))))
+        best_hash = unique[0]
+        best_process = processes[index[0]]
+
         if best_hash == '':
-            return
+            # We only have '' in the list of hashes, else there is at leaste a
+            # hash that is usable
+            if len(counts) == 1:
+                return
+            else:
+                best_hash = unique[1]
+                best_process = processes[index[1]]
+        blocks = self.peer.pl.send(self.peer.own, best_process, "GET", "/askBC", '')
 
-        best_process = processes[np.where(hashes == best_hash)]
-
-        blocks = self.peer.pl.send(best_process, "GET", "/askBC", '')
-        self.peer._blockchain.setStorage(blocks)
+        if blocks is not None:
+            self.peer._blockchain.setStorage(blocks)
 
     def broadcastTransaction(self):
         self.peer.rb.broadcast("POST", '/rb/addTransaction', transaction.toJson())
         pass
 
     def broadcastFoundBlock(self, block):
-        print('client :', type(block), block)
         self.peer.rb.broadcast("POST", '/rb/blockMined', block.toJson())
         pass
 
     def disconnect(self):
-<<<<<<< HEAD
         objH = self.peer.rb.broadcast("DELETE", "/rb/rmNode", self.bootsLoc)
         self._peer.pl.send()
-=======
         pass
->>>>>>> 881875b67f6bb949e1b2298a9cb5ef22b9495ac8
 
 
 def main(args):
