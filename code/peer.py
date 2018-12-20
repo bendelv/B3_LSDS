@@ -8,7 +8,7 @@ import json
 import time
 
 
-from application import Transaction
+import blockchain
 from broadcastSys import ReliableBroadcast
 from broadcastSys import PerfecFailureDetector
 from broadcastSys import PerfectLink
@@ -24,7 +24,7 @@ class Peer:
         self.pl = PerfectLink()
         self.pfd = PerfecFailureDetector(["{}".format(bootsLoc)], 5, self)
         self.rb = ReliableBroadcast("{}".format(bootsLoc), self)
-        time.sleep(1)
+        time.sleep(2)
         self.clientSide = Client(bootsDist, bootsLoc, self)
         pass
 
@@ -34,6 +34,9 @@ class Peer:
 
     def broadcastFoundBlock(self, block):
         self.clientSide.broadcastFoundBlock(block)
+
+    def broadcastTransaction(self, transaction):
+        self.client.broadcastTransaction()
 
 
 class Server:
@@ -52,6 +55,7 @@ class Server:
         self.app.add_url_rule('/rb/addTransaction', 'addTransaction', self.addTransaction, methods = ['POST'])
         self.app.add_url_rule('/rb/blockMined', 'blockMined', self.blockMined, methods = ['POST'])
         self.app.add_url_rule('/askBC', 'askBC', self.askBC, methods = ['GET'])
+        self.app.add_url_rule('/view', 'view', self.view, methods = ['GET'])
         self.app.add_url_rule('/disconnect', 'disconnect', self.disconnect, methods = ['POST'])
         myList = address.split(':')
         host = myList[0]
@@ -68,11 +72,14 @@ class Server:
         objNode = request.get_json()
         self.peer.pfd.add_node(objNode[0]['msg'])
         self.peer.rb.rbHandler(objNode[1], 'POST', '/rb/addNode', objNode[0])
-        """
+
         if self.peer._blockchain.length() > 1:
-            return json.dumps(self._blockchain.getHash())
-        """
-        return json.dumps('')
+            return json.dumps([self.peer._blockchain.getHash(),
+                               self.peer._blockchain.getTransactions()],
+                                default=lambda o: o.__dict__, indent=4)
+
+        return json.dumps([None, self.peer._blockchain.getTransactions()],
+                          default=lambda o: o.__dict__, indent=4)
 
     def rmNode(self):
         objNode = request.get_json()
@@ -97,6 +104,10 @@ class Server:
     def askBC(self):
         return self.peer._blockchain.toJson2()
 
+    def view(self):
+        title = "<h1> log page Blockchain</h1>"
+        return title + self.peer._blockchain.toHtml()
+
     def disconnect(self):
         self.shutdown_server()
         return 'Server shutting down...'
@@ -106,6 +117,7 @@ class Server:
         if func is None:
             raise RuntimeError('Not running with the Werkzeug Server')
         func()
+
 
 class Client:
     def __init__(self, bootsDist, bootsLoc, peer):
@@ -120,26 +132,28 @@ class Client:
         self.peer.pfd.add_nodes(objNodes)
 
     def connectToNodes(self):
-        hashes = self.peer.rb.broadcast("POST","/rb/addNode", self.bootsLoc)
+        res = self.peer.rb.broadcast("POST","/rb/addNode", self.bootsLoc)
+        hashes = np.array([x[0][0] for x in res],dtype=object)
+        processes = np.array([x[1] for x in res],dtype=object)
+        all_transactions = np.array([x[0][1] for x in res],dtype=object)
+        for transactions in all_transactions:
+            for transaction in transactions:
+                t = blockchain.Transaction.fromJsonDict(transaction)
+                self.peer._blockchain.addTransaction(t, False)
 
-        """
-        listH = np.zeros((len(objH), 2))
-        for i in np.arange(len(objH)):
-            listH[i][0] = json.loads(objH)[i][0]
-            listH[i][1] = json.loads(objH)[i][1]
+        # No block in the chain for now
+        hashes[np.where(hashes == None)] = ''
+        unique, counts = np.unique(hashes, return_counts=True)
+        best_hash = unique[np.argmax(counts)]
+        if best_hash == '':
+            return
 
-        unique, counts = np.unique(listH[:][0], return_counts=True)
-        secureH = unique[np.argmax(counts)]
+        best_process = processes[np.where(hashes == best_hash)]
 
-        #take the first secureNode from secureH
-        secureNode = listH[listH[:][0].index(secureH)][1]
+        blocks = self.peer.pl.send(best_process, "GET", "/askBC", '')
+        self.peer._blockchain.setStorage(blocks)
 
-        objBC = self.peer.pl.send(secureNode, "GET", "/askBC", '')
-
-        self.peer._blockchain.setStorage(objBC)
-        """
-
-    def broadcastTransaction(self, transaction):
+    def broadcastTransaction(self):
         self.peer.rb.broadcast("POST", '/rb/addTransaction', transaction.toJson())
         pass
 
@@ -149,8 +163,12 @@ class Client:
         pass
 
     def disconnect(self):
+<<<<<<< HEAD
         objH = self.peer.rb.broadcast("DELETE", "/rb/rmNode", self.bootsLoc)
         self._peer.pl.send()
+=======
+        pass
+>>>>>>> 881875b67f6bb949e1b2298a9cb5ef22b9495ac8
 
 def main(args):
 
