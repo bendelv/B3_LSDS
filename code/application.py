@@ -88,7 +88,7 @@ class Application:
         value = self._blockchain.is_inside(key, True)
         return value
 
-    def retrieve_all(self, key):
+    def retrieveAll(self, key):
         """Retrieves all values associated with the specified key on the
         complete blockchain.
         """
