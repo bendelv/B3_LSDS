@@ -170,6 +170,9 @@ class MerkleLeaf:
         else:
             return self._transaction.getKey() == key
 
+    def getTransactions(self):
+        return [self._transaction]
+
 
 class MerkleNode:
     def __init__(self, left, right, leftHash=None, rightHash=None, prefixes=None, nonce=None, hash=None, genesis=False):
@@ -283,6 +286,9 @@ class MerkleNode:
         while self._hash[0:difficulty] != "0"*difficulty:
             self._nonce += 1
             self._hash = self.computeHash()
+
+    def getTransactions(self):
+        return self._left.getTransactions() + self._right.getTransactions()
 
     def isValid(self):
         if self._hash != self.computeHash():
@@ -448,6 +454,9 @@ class MerkleTree:
         hex_dig = hash_object.hexdigest()
         return hex_dig
 
+    def getTransactions(self):
+        return self._tree.getTransactions()
+
     def isValid(self):
         if self._hash != self.computeHash():
             return False
@@ -565,9 +574,11 @@ class Block:
 
         self.flag_received = False
 
-    def transactions(self):
+    def getTransactions(self):
         """Returns the list of transactions associated with this block."""
-        return self._transactions
+        if self._notrans:
+            return []
+        return self._transactions.getTransactions()
 
     def isValid(self):
         if self._hash != self.computeHash():
@@ -722,11 +733,9 @@ class Blockchain:
         If the `mine` method is called, it will collect the current list
         of transactions, and attempt to mine a block with those.
         """
-        if transaction not in self._transactionBuffer:
-            self._transactionBuffer.append(transaction)
+        self.addLocTransaction(transaction.toJson())
         if broadcast:
             #MODIF HERE
-            self.addLocTransaction(transaction.toJson())
             self._peer.broadcastTransaction(transaction)
 
     def addLocTransaction(self, json_transaction):
@@ -760,12 +769,11 @@ class Blockchain:
         # transactions set.
         if self._newBlock is None:
             print('Start mining new block...')
-            t = self._transactionBuffer.copy()
-            if t == []:
+            transactions = self._transactionBuffer.copy()
+            if transactions == []:
                 self._newBlock = Block(time.time(), None)
             else:
-                self._newBlock = Block(time.time(), self._transactionBuffer.copy())
-            self._transactionBuffer = []
+                self._newBlock = Block(time.time(), transactions)
             self._newBlock.setPreviousHash(self.lastElement().getHash())
 
         else:
@@ -788,6 +796,10 @@ class Blockchain:
         self._newBlock.flag_received = True
 
     def addLocBlock(self, block):
+        for t in block.getTransactions():
+            if t in self._transactionBuffer:
+                self._transactionBuffer.remove(t)
+
         self._blocks.append(block)
 
     def getBlockReceived(self):
