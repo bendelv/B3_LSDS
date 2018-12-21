@@ -38,6 +38,7 @@ class Peer:
     def broadcastTransaction(self, transaction):
         self.clientSide.broadcastTransaction(transaction)
 
+    def resolveConflicts(self):
 
 class Server:
     def __init__(self, address, peer):
