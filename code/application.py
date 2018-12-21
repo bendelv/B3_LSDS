@@ -22,7 +22,7 @@ class Callback:
         raise NotImplementedError
 
 class Application:
-    def __init__(self, bootstrap, bootsloc, miner, difficulty, attacker=False):
+    def __init__(self, bootstrap, bootsloc, miner, difficulty, attacker=0, attack_context=False):
         """Allocate the backend storage of the high level API, i.e.,
         your blockchain. Depending whether or not the miner flag has
         been specified, you should allocate the mining process.
@@ -31,6 +31,7 @@ class Application:
         self._bootstrap = bootstrap
         self._miner = miner
         self.attacker = attacker
+        self.attack_context = attack_context
         self._blockchain = Blockchain(self, difficulty)
 
     def put(self, key, value, block=True):

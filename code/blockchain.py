@@ -649,25 +649,22 @@ class Blockchain:
                  application,
                  difficulty=None,
                  blocks=None,
-                 transactionBuffer=None,
-                 attacker=0,
-                 attack_context=False):
+                 transactionBuffer=None):
         """
         The bootstrap address serves as the initial entry point of
         the bootstrapping procedure. In principle it will contact the specified
         addres, download the peerlist, and start the bootstrapping procedure.
         """
-
-        self._attack_context= attack_context
-        self._attacker = attacker
+        self.application = application
+        self._attack_context= application.attack_context
+        self._attacker = application.attacker
         self._block_interrupt = False
         # Initialize blockchain and transactionBuffer HERE
         # Initialize the properties.
         self._difficulty = difficulty
         self._newBlock = None
         self._blockReceived = None
-        self._miner = api._miner
-        self._attacker = api.attacker
+        self._miner = self.application._miner
 
         if blocks is None:
             self._blocks = [self._addGenesisBlock()]
@@ -682,7 +679,7 @@ class Blockchain:
 
         self._newBlock = None
 
-        self._peer = peer.Peer(self, api._bootstrap, api._own)
+        self._peer = peer.Peer(self, self.application._bootstrap, self.application._own)
         if self._miner:
             print("START MINING")
             consensusThread = Thread(target = self.lauchMining, args = [])
@@ -824,7 +821,7 @@ class Blockchain:
 
             else:
                 if self._attacker >= 1 and len(self._blocks) >= 3 and len(self._blocks) < 8:
-                    block_found = self.block_attac_mine()
+                    block_found = self.block_attack_mine()
                 else:
                     block_found = self.mine()
                 #if H found broadcast
@@ -847,7 +844,7 @@ class Blockchain:
         block.mine(2)
         return block
 
-    def block_attac_mine(self):
+    def block_attack_mine(self):
         """Implements the mining procedure."""
         #We should block any procces attemding to write a new transaction in the
         # transactions set.

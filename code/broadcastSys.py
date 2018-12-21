@@ -61,13 +61,13 @@ class App(object):
 
 class fakePeer(object):
     def __init__(self, host, port, alive):
-        self.serverSide = App(host, port)
+        self._server = App(host, port)
         self.bootsLoc = "{}:{}".format(host, port)
         self.pl = PerfectLink()
         self.pfd = PerfecFailureDetector(alive, 2, self)
         self.rb = ReliableBroadcast(self.bootsLoc, self)
-        self.serverSide.set_rb(self.rb)
-        self.serverSide.launchServer()
+        self._server.set_rb(self.rb)
+        self._server.launchServer()
 
 
 class ReliableBroadcast(object):
@@ -80,7 +80,7 @@ class ReliableBroadcast(object):
         self.msg_from = {}
         for p in self.alive:
             self.msg_from[p] = []
-        peer.serverSide.app.add_url_rule('/rb/see', 'rb_see', self.status, methods=['GET'])
+        peer._server.app.add_url_rule('/rb/see', 'rb_see', self.status, methods=['GET'])
 
     def status(self):
         def print_msg(msgs, p):
@@ -166,8 +166,8 @@ class PerfecFailureDetector(object):
         self.detected = []
         self.now_alive = alive.copy()
 
-        peer.serverSide.app.add_url_rule('/FD/heartbeatRequest', 'heartbeat', self.heartbeatReply, methods=['GET'])
-        peer.serverSide.app.add_url_rule('/FD/see', 'status', self.status, methods=['GET'])
+        peer._server.app.add_url_rule('/FD/heartbeatRequest', 'heartbeat', self.heartbeatReply, methods=['GET'])
+        peer._server.app.add_url_rule('/FD/see', 'status', self.status, methods=['GET'])
         self.timeout = timeout
         self.t = Timer(self.timeout, self.timeoutCallback)
         self.t.start()

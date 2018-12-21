@@ -8,7 +8,8 @@ def allocate_application(arguments):
         bootsloc="192.168.1.41:{}".format(arguments.port),
         miner=arguments.miner,
         difficulty=arguments.difficulty,
-        attacker=arguments.attacker)
+        attacker=arguments.attacker,
+        attack_context=arguments.attack_context)
 
     return application
 
@@ -28,7 +29,7 @@ def parse_arguments():
                         help="Sets the difficulty of Proof of Work, only has "
                              "an effect with the `--miner` flag has been set.")
     parser.add_argument("--attacker", "-a", action='store_true')
-
+    parser.add_argument('--attack_context', '-ac', action='store_true')
     arguments = parser.parse_args()
     return arguments
 
