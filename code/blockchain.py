@@ -35,6 +35,7 @@ class FakeApplication:
     def addTransaction(self, transaction):
         self._blockchain.addTransaction(transaction)
 
+
 class Transaction:
     def __init__(self, key, value, timestamp=time.time()):
         """
@@ -469,8 +470,18 @@ class MerkleTree:
 
 
 class Block:
-    def __init__(self, timestamp, transactions, previousHash = "", nonce=None, transactionsHash=None, hash=None, notrans=None, genesis=False):
+    def __init__(self,
+                 timestamp,
+                 transactions,
+                 previousHash = "",
+                 nonce=None,
+                 transactionsHash=None,
+                 hash=None,
+                 notrans=None,
+                 genesis=False,
+                 block_number=0):
         """Describe the properties of a block."""
+        self._block_number = block_number
         self._timestamp = timestamp
 
         if notrans is None:
@@ -505,6 +516,7 @@ class Block:
 
     @classmethod
     def fromJsonDict(cls, dict):
+        block_number = dict['_block_number']
         notrans = dict['_notrans']
         if notrans:
             transactions = dict['_transactions']
@@ -515,11 +527,20 @@ class Block:
         nonce = dict['_nonce']
         hash = dict['_hash']
         transactionsHash = dict['_transactionsHash']
-        return cls(timestamp, transactions, previousHash, nonce, transactionsHash, hash, notrans)
+        return cls(timestamp,
+                   transactions,
+                   previousHash,
+                   nonce,
+                   transactionsHash,
+                   hash,
+                   notrans,
+                   False,
+                   block_number)
 
     def __str__(self):
         dict = {}
         dict['timestamp'] = self._timestamp
+        dict['block number'] = self._block_number
         dict['transHash'] = self._transactionsHash
         dict['nonce'] = self._nonce
         dict['previousHash'] = self._previousHash
@@ -531,6 +552,7 @@ class Block:
         myStr += "<li>prev hash: {}</li>".format(self._previousHash)
         myStr += "<li>hash: {}</li>".format(self._hash)
         myStr += "<li>timestamp: {}</li>".format(self._timestamp)
+        myStr += "<li>block number: {}</li>".format(self._block_number)
         myStr += "<li>transHash: {}</li>".format(self._transactionsHash)
         myStr += "</ul>"
         myStr += "<h3>transactions</h3>"
@@ -622,6 +644,7 @@ class Blockchain:
             self._blocks = [self._addGenesisBlock()]
         else:
             self._blocks = blocks
+
 
         if transactionBuffer is None:
             self._transactionBuffer = []
@@ -779,9 +802,9 @@ class Blockchain:
             print('Start mining new block...')
             transactions = self._transactionBuffer.copy()
             if transactions == []:
-                self._newBlock = Block(time.time(), None)
+                self._newBlock = Block(time.time(), None, block_number=len(self._blocks))
             else:
-                self._newBlock = Block(time.time(), transactions)
+                self._newBlock = Block(time.time(), transactions, block_number=len(self._blocks))
             self._newBlock.setPreviousHash(self.lastElement().getHash())
 
         else:
@@ -1144,8 +1167,8 @@ def main(args):
     '''
 
 
-    bootstrap = "192.168.1.41:8000"
-    bootsloc = "192.168.1.41:{}".format(args.port)
+    bootstrap = "192.168.1.25:8000"
+    bootsloc = "192.168.1.25:{}".format(args.port)
 
     tBuff = None
     if args.port == "8000":
