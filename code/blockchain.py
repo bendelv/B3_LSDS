@@ -603,18 +603,31 @@ class Block:
         return self._transactions.getTransactions()
 
     def isValid(self):
+
         if self._hash != self.computeHash():
             return False
         if self._transactions is not None:
             if self._transactionsHash != self._transactions.getHash():
                 return False
             return self._transactions.isValid()
+
         else:
             return True
 
     def isInside(self, key, get=False, all=None):
-        return self._transactions.isInside(key, get, all)
+        if self._transactions is not None:
+            return self._transactions.isInside(key, get, all)
+        else:
+            if get:
+                if all is None:
+                    return False, None
+                else:
+                    return all
+            else:
+                return False
 
+    def getBlockNumber(self):
+        return self.block_number
 
 class Blockchain:
     def __init__(self, application, difficulty=None, blocks=None, transactionBuffer=None):
@@ -773,18 +786,19 @@ class Blockchain:
             block_found = self.mine()
             #if H found broadcast
             if block_found is not None:
-                #MODIF HERE
                 self.addLocBlock(block_found)
                 self.broadcastFoundBlock(block_found)
                 self._newBlock = None
             #at the same time listen server to know if other found H block
             else:
-                if self.getBlockReceived().isValid():
+                validity, faulty= self.getBlockReceived().isValid()
+                if validity:
                     self.addLocBlock(self.getBlockReceived())
                     self.setBlockReceived(None)
                     self._newBlock = None
                 else:
-                    print("Block received non valid..")
+                    self.adjustBC(faulty)
+
 
     def mine(self):
         """Implements the mining procedure."""
@@ -811,6 +825,9 @@ class Blockchain:
         else:
             return None
 
+    def adjustBC(self, faulty):
+        correction = self._peer.askBCCorrections(faulty)
+        
     def broadcastFoundBlock(self,block_found):
         #print('BC :', type(block_found), block_found)
         self._peer.broadcastFoundBlock(block_found)
@@ -850,33 +867,38 @@ class Blockchain:
             prev = self._blocks[i - 1]
             # check if the current hash pointer points to the correct element
             if not current.isValid():
-                return False
+                return False, i
             if current.getPreviousHash() != prev.computeHash():
-                return False
+                return False, i
             # check is the node hasn't been modified
             if current.getHash() != current.computeHash():
-                return False
-        return True
+                return False, i
+            if current.getBlockNumber() != prev.getBlockNumber() + 1:
+                return False, i
+
+        return True, None
 
     def isInside(self, key, get=False, all=None):
         for i in reversed(range(len(self._blocks))):
             if all is None:
+                print("all is None")
                 new_all = None
             else:
                 new_all = []
+
             current = self._blocks[i]
-            resutl = current.isInside(key, get, new_all)
+            result = current.isInside(key, get, new_all)
+
             if get:
                 if all is None:
-                    if resutl[0]:
-                        return resutl[1]
-                    else:
-                        return None
+                    if result[0]:
+                        return result[1]
+
                 else:
-                    for res in resutl:
+                    for res in result:
                         all.append(res)
             else:
-                return resutl
+                return result
         return all
 
 
