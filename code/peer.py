@@ -54,9 +54,7 @@ class Server:
         self.app.add_url_rule('/rb/rmNode', 'rmNode', self.rmNode, methods = ['DELETE'])
         self.app.add_url_rule('/rb/addTransaction', 'addTransaction', self.addTransaction, methods = ['POST'])
         self.app.add_url_rule('/rb/blockMined', 'blockMined', self.blockMined, methods = ['POST'])
-        self.app.add_url_rule('/rb/bestChain', 'bestChain', self.bestChain, methods = ['GET'])
-        self.app.add_url_rule('/askBC', 'askBC', self.askBC, methods = ['GET'])
-        self.app.add_url_rule('/askBlocks', 'askBlocks', self.askBlocks, methods = ['GET'])
+        self.app.add_url_rule('/rb/askBC', 'askBC', self.askBC, methods = ['GET'])
         self.app.add_url_rule('/view', 'view', self.view, methods = ['GET'])
         self.app.add_url_rule('/disconnect', 'disconnect', self.disconnect, methods = ['POST'])
         myList = address.split(':')
@@ -74,18 +72,8 @@ class Server:
         objNode = request.get_json()
         self.peer.pfd.add_node(objNode[0]['msg'])
         self.peer.rb.rbHandler(objNode[1], 'POST', '/rb/addNode', objNode[0])
+        return self.askBC()
 
-        if self.peer._blockchain.length() > 1:
-            return json.dumps([self.peer._blockchain.getHash(),
-                               self.peer._blockchain.getTransactions()],
-                                default=lambda o: o.__dict__,
-                                indent=4,
-                                sort_keys=True)
-
-        return json.dumps([None, self.peer._blockchain.getTransactions()],
-                          default=lambda o: o.__dict__,
-                          indent=4,
-                          sort_keys=True)
 
     def rmNode(self):
         objNode = request.get_json()
@@ -107,22 +95,6 @@ class Server:
 
     def askBC(self):
         return self.peer._blockchain.toJson2()
-
-    def bestChain(self):
-        return json.dumps([self.peer._blockchain.getHash(),
-                          self.peer._blockchain.getLen()],
-                          default=lambda o: o.__dict__,
-                          indent=4,
-                          sort_keys=True)
-
-    def askBlocks(self):
-        request = request.get_json()
-        block_index = request[0]['msg']
-        blocks = self.peer._blockchain._blocks[block_index:]
-        return json.dumps(blocks,
-                          default=lambda o: o.__dict__,
-                          indent=4,
-                          sort_keys=True)
 
     def view(self):
         title = "<h1> log page Blockchain</h1>"
@@ -153,9 +125,19 @@ class Client:
 
     def connectToNodes(self):
         res = self.peer.rb.broadcast("POST","/rb/addNode", self.bootsLoc)
-
         if not res:
             return
+        else:
+            hashes = []
+            length = []
+            for chain in res:
+                blocks = chain[0][0]
+                hashes.append(blocks[-1]['_hash'])
+                length.append(len(blocks))
+                trans = chain[0][1]
+                diff = chain[0][2]
+                
+        '''
 
         hashes = np.array([x[0][0] for x in res],dtype=object)
         processes = np.array([x[1] for x in res],dtype=object)
@@ -184,6 +166,7 @@ class Client:
 
         if blocks is not None:
             self.peer._blockchain.setStorage(blocks)
+        '''
 
     def broadcastTransaction(self, transaction):
         self.peer.rb.broadcast("POST", '/rb/addTransaction', transaction.toJson())
