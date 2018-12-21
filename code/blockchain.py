@@ -17,7 +17,14 @@ import peer
 
 
 class FakeApplication:
-    def __init__(self, bootstrap, bootsloc, miner, difficulty, transactionBuffer=None):
+    def __init__(self,
+                 bootstrap,
+                 bootsloc,
+                 miner,
+                 difficulty,
+                 transactionBuffer=None,
+                 attacker=0,
+                 attack_context=False):
         """Allocate the backend storage of the high level API, i.e.,
         your blockchain. Depending whether or not the miner flag has
         been specified, you should allocate the mining process.
@@ -27,7 +34,9 @@ class FakeApplication:
         self._miner = miner
         self._blockchain = Blockchain(self,
                                       difficulty=difficulty,
-                                      transactionBuffer=transactionBuffer)
+                                      transactionBuffer=transactionBuffer,
+                                      attacker=attacker,
+                                      attack_context=attack_context)
 
     def isMiner(self):
         return self._miner
@@ -143,7 +152,7 @@ class MerkleLeaf:
 
     def mine(self, difficulty):
         print("Start Mining leaf...")
-        self._nonce = randint(0, 1000)
+        self._nonce = randint(0, 100000)
         while self._hash[0:difficulty] != "0"*difficulty:
             self._nonce += 1
             self._hash = self.computeHash()
@@ -602,14 +611,18 @@ class Block:
             return []
         return self._transactions.getTransactions()
 
-    def isValid(self):
+    def isValid(self ,difficulty, attack_context=False):
 
         if self._hash != self.computeHash():
             return False
+
         if self._transactions is not None:
             if self._transactionsHash != self._transactions.getHash():
                 return False
             return self._transactions.isValid()
+
+        if self._hash[0:difficulty] != "0"*difficulty and not attack_context:
+            return False
 
         else:
             return True
@@ -629,15 +642,24 @@ class Block:
     def getBlockNumber(self):
         return self._block_number
 
+
 class Blockchain:
-    def __init__(self, application, difficulty=None, blocks=None, transactionBuffer=None):
+    def __init__(self,
+                 application,
+                 difficulty=None,
+                 blocks=None,
+                 transactionBuffer=None,
+                 attacker=0,
+                 attack_context=False):
         """
         The bootstrap address serves as the initial entry point of
         the bootstrapping procedure. In principle it will contact the specified
         addres, download the peerlist, and start the bootstrapping procedure.
         """
 
-
+        self._attack_context= attack_context
+        self._attacker = attacker
+        self._block_interrupt = False
         # Initialize blockchain and transactionBuffer HERE
         # Initialize the properties.
         self._difficulty = difficulty
@@ -775,28 +797,75 @@ class Blockchain:
             self._peer.broadcastTransaction(transaction)
 
     def addLocTransaction(self, json_transaction):
-        self._transactionBuffer.append(Transaction.fromJsonDict(json.loads(json_transaction)))
+        t = Transaction.fromJsonDict(json.loads(json_transaction))
+        if t not in self._transactionBuffer:
+            self._transactionBuffer.append(t)
 
     def getTransactions(self):
         return self._transactionBuffer
 
     def lauchMining(self):
+        #mine block
         while True:
-            #mine block
-            block_found = self.mine()
-            #if H found broadcast
-            if block_found is not None:
-                self.addLocBlock(block_found)
-                self.broadcastFoundBlock(block_found)
-                self._newBlock = None
-            #at the same time listen server to know if other found H block
+            #replace attack
+            if self._attacker == 1 and len(self._blocks) >= 3 and len(self._blocks) < 10:
+                print("Evil attacker replace")
+                self._block_interrupt = True
+                block = self.replace_attack_mine()
+                self.addLocBlock(block)
+                if len(self._blocks) == 9:
+                    self.broadcastFoundBlock(block)
+                    self._newBlock = None
+                    self._block_interrupt = True
+            # Blocking attack
+
+
             else:
-                if self.getBlockReceived().isValid():
+                if self._attacker >= 1 and len(self._blocks) >= 3 and len(self._blocks) < 8:
+                    block_found = self.block_attac_mine()
+                else:
+                    block_found = self.mine()
+                #if H found broadcast
+                if block_found is not None:
+                    self.addLocBlock(block_found)
+                    self.broadcastFoundBlock(block_found)
+                    self._newBlock = None
+                #at the same time listen server to know if other found H block
+                else:
                     self.addLocBlock(self.getBlockReceived())
                     self.setBlockReceived(None)
                     self._newBlock = None
-                else:
-                    self._peer.askBC()
+                    if not self.isValid():
+                        self._peer.askBC()
+
+    def replace_attack_mine(self):
+        transactions = [Transaction("My evil key", "My evil value mouahahahaaahah")]
+        block = Block(time.time(), transactions, block_number=len(self._blocks))
+        block.setPreviousHash(self.lastElement().getHash())
+        block.mine(2)
+        return block
+
+    def block_attac_mine(self):
+        """Implements the mining procedure."""
+        #We should block any procces attemding to write a new transaction in the
+        # transactions set.
+        if self._newBlock is None:
+            print('Start mining new block...')
+            transactions = [Transaction("M", "as Malicious")]
+            self._newBlock = Block(time.time(), transactions, block_number=len(self._blocks))
+            self._newBlock.setPreviousHash(self.lastElement().getHash())
+
+        else:
+            print('Resume block mining...')
+
+        self._newBlock.mine(2)
+
+        if self.getBlockReceived() is None:
+            print('Block mined')
+            return self._newBlock
+
+        else:
+            return None
 
     def mine(self):
         """Implements the mining procedure."""
@@ -823,15 +892,13 @@ class Blockchain:
         else:
             return None
 
-    def adjustBC(self, faulty):
-        correction = self._peer.askBCCorrections(faulty)
-
     def broadcastFoundBlock(self,block_found):
         #print('BC :', type(block_found), block_found)
         self._peer.broadcastFoundBlock(block_found)
 
     def setFlagReceived(self):
-        self._newBlock.flag_received = True
+        if not self._block_interrupt:
+            self._newBlock.flag_received = True
 
     def addLocBlock(self, block):
         for t in block.getTransactions():
@@ -864,9 +931,11 @@ class Blockchain:
             current = self._blocks[i]
             prev = self._blocks[i - 1]
             # check if the current hash pointer points to the correct element
-            if not current.isValid():
+            if not current.isValid(self._difficulty, self._attack_context):
                 return False
             if current.getPreviousHash() != prev.computeHash():
+                return False
+            if current.getBlockNumber() != prev.getBlockNumber() + 1:
                 return False
             # check is the node hasn't been modified
             if current.getHash() != current.computeHash():
@@ -1189,7 +1258,13 @@ def main(args):
         tBuff.append(t3)
         t4 = Transaction("key44", "some random other value")
         tBuff.append(t4)
-    app = FakeApplication(bootstrap, bootsloc, args.miner, 5, transactionBuffer=tBuff)
+    app = FakeApplication(bootstrap,
+                          bootsloc,
+                          args.miner,
+                          5,
+                          transactionBuffer=tBuff,
+                          attacker=args.attacker,
+                          attack_context=args.attack_context)
 
     input()
     if args.port == "8000":
@@ -1213,5 +1288,15 @@ if __name__ == "__main__":
         '--miner', '-m',
         action='store_true')
 
+    parser.add_argument(
+        '--attacker', '-a',
+        action='count')
+
+    parser.add_argument(
+        '--attack_context', '-ac',
+        action='store_true')
+
     args = parser.parse_args()
+    if args.attacker is None:
+        args.attacker = 0
     main(args)

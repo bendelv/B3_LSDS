@@ -128,7 +128,6 @@ class ReliableBroadcast(object):
         dict['method'] = method
         dict['url'] = url
         dict['msg'] = msg
-        print(dict not in self.msg_from[p])
         if dict not in self.msg_from[p]:
             self.msg_from[p].append(dict)
             if p not in self.alive:
