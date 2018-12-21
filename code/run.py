@@ -1,9 +1,11 @@
 from application import Application
 import argparse
+import time
 
 def allocate_application(arguments):
     application = Application(
         bootstrap=arguments.bootstrap,
+        bootsloc="192.168.1.41:{}".format(arguments.port),
         miner=arguments.miner,
         difficulty=arguments.difficulty)
 
@@ -15,25 +17,36 @@ def parse_arguments():
         "KeyChain - An overengineered key-value store "
         "with version control, powered by fancy linked-lists.")
 
-    parser.add_argument("--miner", type=bool, default=False, nargs='?',
+    parser.add_argument("--miner", type=bool, default=True, nargs='?',
                         const=True, help="Starts the mining procedure.")
-    parser.add_argument("--bootstrap", type=str, default=None,
+    parser.add_argument("--bootstrap", type=str, default='192.168.1.41:8000',
                         help="Sets the address of the bootstrap node.")
-    parser.add_argument("--bootsloc", type=str, default=None,
+    parser.add_argument("--port", '-p', type=str, default='8000',
                         help="Sets the address of the local node.")
     parser.add_argument("--difficulty", type=int, default=5,
                         help="Sets the difficulty of Proof of Work, only has "
                              "an effect with the `--miner` flag has been set.")
+    arguments = parser.parse_args()
     return arguments
 
 def main(arguments):
     app = allocate_application(arguments)
 
     # Adding a key-value pair to the storage.
-    key = "info8002"
-    value = "fun"
-    callback = app.put(key, value, block=False)
+    value = input("Value: ")
+    app.put("T", value, block=False)
 
+    input()
+    print(app.retrieve("T"))
+
+    input()
+
+    retrieved_list = app.retrieveAll("T")
+    for retrieved in retrieved_list:
+        print(retrieved)
+        
+    """
+    callback = app.put(key, value, block=False)
     # Depending on how fast your blockchain is,
     # this will return a proper result.
     print(app.retrieve(key))
@@ -48,7 +61,7 @@ def main(arguments):
 
     # Show all values of the key.
     print(app.retrieve_all(key))
-
+    """
 
 if __name__ == "__main__":
     arguments = parse_arguments()
