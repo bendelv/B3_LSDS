@@ -25,19 +25,21 @@ class Peer:
         self.pfd = PerfecFailureDetector(["{}".format(bootsLoc)], 5, self)
         self.rb = ReliableBroadcast("{}".format(bootsLoc), self)
         time.sleep(2)
-        self.clientSide = Client(bootsDist, bootsLoc, self)
+        self._client = Client(bootsDist, bootsLoc, self)
         pass
 
     def removeConnection(self):
-        self.clientSide.disconnect()
+        self._client.disconnect()
         self.serverSide.disconnect()
 
     def broadcastFoundBlock(self, block):
-        self.clientSide.broadcastFoundBlock(block)
+        self._client.broadcastFoundBlock(block)
 
     def broadcastTransaction(self, transaction):
-        self.clientSide.broadcastTransaction(transaction)
+        self._client.broadcastTransaction(transaction)
 
+    def askBCCorrections(self, faulty):
+        return self._peer.askBCCorrections()
 
 class Server:
     def __init__(self, address, peer):
@@ -162,6 +164,34 @@ class Client:
 
         if blocks is not None:
             self.peer._blockchain.setStorage(blocks)
+
+    def askBC(self):
+        res = self.peer.rb.broadcast('GET', '/rb/askBC', '')
+
+        if not res:
+            return
+        else:
+            blocks = []
+            hashes = []
+            length = []
+            trans = []
+            for chain in res:
+                blocks = chain[0][0]
+                hashes.append(blocks[-1]['_hash'])
+                length.append(len(blocks))
+                trans.append(chain[0][1])
+
+        hashes[np.where(hashes == None)] = ''
+
+        unique_h, counts_h = np.unique(hashes, return_counts=True)
+        secure_h = hashes[np.where(counts_h == max(counts_h))]
+
+        unique_l, counts_l = np.unique(length, return_counts=True)
+        secure_l = hashes[np.where(counts_l == max(counts_l))]
+
+        secure_BC = res[np.where(secure_h == hashes and secure_l == length)]
+
+        self.peer._blockchain.setStorage(secure_BC[0])
 
     def broadcastTransaction(self, transaction):
         self.peer.rb.broadcast("POST", '/rb/addTransaction', transaction.toJson())
