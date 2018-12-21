@@ -94,3 +94,10 @@ class Application:
         """
         valueList = self._blockchain.is_inside(key, True, [])
         return valueList
+
+def main(args):
+    
+    pass
+if __name__ == "__main__":
+    arguments = parse_arguments()
+    main(arguments)
