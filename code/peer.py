@@ -40,7 +40,7 @@ class Peer:
         self._client.broadcastTransaction(transaction)
 
     def askBC(self):
-        return self._peer.askBC()
+        return self._client.askBC()
 
 class Server:
     def __init__(self, address, peer):
