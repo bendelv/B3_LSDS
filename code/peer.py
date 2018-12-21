@@ -19,7 +19,8 @@ class Peer:
         self.bootsLoc = bootsLoc# DEPRECATED USE self.own
         self.own = "{}".format(bootsLoc)
         self.bootsDist = bootsDist
-        self.serverSide = Server(bootsLoc, self)
+        
+        self._server = Server(bootsLoc, self)
         time.sleep(1)
         self.pl = PerfectLink()
         self.pfd = PerfecFailureDetector(["{}".format(bootsLoc)], 5, self)
@@ -30,7 +31,7 @@ class Peer:
 
     def removeConnection(self):
         self._client.disconnect()
-        self.serverSide.disconnect()
+        self._server.disconnect()
 
     def broadcastFoundBlock(self, block):
         self._client.broadcastFoundBlock(block)

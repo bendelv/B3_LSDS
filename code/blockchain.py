@@ -14,9 +14,10 @@ import argparse
 from random import randint
 from threading import Thread
 import peer
+import numpy as np
 
 
-class FakeApplication:
+class Fakeapi:
     def __init__(self, bootstrap, bootsloc, miner, difficulty, transactionBuffer=None):
         """Allocate the backend storage of the high level API, i.e.,
         your blockchain. Depending whether or not the miner flag has
@@ -630,7 +631,7 @@ class Block:
         return self._block_number
 
 class Blockchain:
-    def __init__(self, application, difficulty=None, blocks=None, transactionBuffer=None):
+    def __init__(self, api, difficulty=None, blocks=None, transactionBuffer=None):
         """
         The bootstrap address serves as the initial entry point of
         the bootstrapping procedure. In principle it will contact the specified
@@ -643,7 +644,8 @@ class Blockchain:
         self._difficulty = difficulty
         self._newBlock = None
         self._blockReceived = None
-        self._miner = application._miner
+        self._miner = api._miner
+        self._attacker = api.attacker
 
         if blocks is None:
             self._blocks = [self._addGenesisBlock()]
@@ -658,7 +660,7 @@ class Blockchain:
 
         self._newBlock = None
 
-        self._peer = peer.Peer(self, application._bootstrap, application._own)
+        self._peer = peer.Peer(self, api._bootstrap, api._own)
         if self._miner:
             print("START MINING")
             consensusThread = Thread(target = self.lauchMining, args = [])
@@ -804,7 +806,9 @@ class Blockchain:
         # transactions set.
         if self._newBlock is None:
             print('Start mining new block...')
+
             transactions = self._transactionBuffer.copy()
+
             if transactions == []:
                 self._newBlock = Block(time.time(), None, block_number=len(self._blocks))
             else:
@@ -1189,7 +1193,7 @@ def main(args):
         tBuff.append(t3)
         t4 = Transaction("key44", "some random other value")
         tBuff.append(t4)
-    app = FakeApplication(bootstrap, bootsloc, args.miner, 5, transactionBuffer=tBuff)
+    app = Fakeapi(bootstrap, bootsloc, args.miner, 5, transactionBuffer=tBuff)
 
     input()
     if args.port == "8000":

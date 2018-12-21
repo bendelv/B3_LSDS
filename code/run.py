@@ -7,7 +7,8 @@ def allocate_application(arguments):
         bootstrap=arguments.bootstrap,
         bootsloc="192.168.1.41:{}".format(arguments.port),
         miner=arguments.miner,
-        difficulty=arguments.difficulty)
+        difficulty=arguments.difficulty,
+        attacker=arguments.attacker)
 
     return application
 
@@ -26,6 +27,8 @@ def parse_arguments():
     parser.add_argument("--difficulty", type=int, default=5,
                         help="Sets the difficulty of Proof of Work, only has "
                              "an effect with the `--miner` flag has been set.")
+    parser.add_argument("--attacker", "-a", action='store_true')
+
     arguments = parser.parse_args()
     return arguments
 
@@ -33,18 +36,20 @@ def main(arguments):
     app = allocate_application(arguments)
 
     # Adding a key-value pair to the storage.
-    value = input("Value: ")
-    app.put("T", value, block=False)
+    value = input("Value to link at 'key1' :\n")
+    app.put("key1", value, block=False)
+    app.put("key2", value, block=False)
 
-    input()
-    print(app.retrieve("T"))
+    #Check last version of a key
+    key = input("Verify last version of a key:\n")
+    print(app.retrieve(key))
 
-    input()
-
-    retrieved_list = app.retrieveAll("T")
+    #Check all versions of a key
+    key = input("Verify all versions of a key:\n")
+    retrieved_list = app.retrieveAll(key)
     for retrieved in retrieved_list:
         print(retrieved)
-        
+
     """
     callback = app.put(key, value, block=False)
     # Depending on how fast your blockchain is,
