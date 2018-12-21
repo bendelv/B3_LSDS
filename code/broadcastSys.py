@@ -88,9 +88,11 @@ class ReliableBroadcast(object):
             if len(msgs) > 0:
                 for msg in msgs:
                     view += "<li> Message <ul>"
-                    view += "<li><b> Timestamp: </b>{}</li>".format(msg['ts'])
-                    view += "<li><b> From: </b>{}</li>".format(msg['from'])
-                    view += "<li><b> Message: </b>{}</li></ul>".format(msg['msg'])
+                    view += "<li><b> Method: </b>{}</li>".format(msg['method'])
+                    view += "<li><b> Url: </b>{}</li>".format(msg['url'])
+                    view += "<li><b> Timestamp: </b>{}</li>".format(msg['msg']['ts'])
+                    view += "<li><b> From: </b>{}</li>".format(msg['msg']['from'])
+                    view += "<li><b> Message: </b>{}</li></ul>".format(msg['msg']['msg'])
             else:
                 view += "<li> Message <ul>"
                 view += "<li><b> None </b></li>"
@@ -122,9 +124,13 @@ class ReliableBroadcast(object):
     #upon event beb deliver
     def rbHandler(self, p, method, url, msg):
         self.pfdHandler()
-
-        if msg not in self.msg_from[p]:
-            self.msg_from[p].append(msg)
+        dict = {}
+        dict['method'] = method
+        dict['url'] = url
+        dict['msg'] = msg
+        print(dict not in self.msg_from[p])
+        if dict not in self.msg_from[p]:
+            self.msg_from[p].append(dict)
             if p not in self.alive:
                 self._broadcast(method, url, msg, p)
 
@@ -145,9 +151,9 @@ class ReliableBroadcast(object):
             else:
                 #check if p even send one message
                 if p in self.msg_from.keys():
-                    for msg in self.msg_from[p]:
+                    for dict in self.msg_from[p]:
                         # TODO TRY this code
-                        self._broadcast(msg['method'], msg['url'], msg['msg'], p)
+                        self._broadcast(dict['method'], dict['url'], dict['msg'], p)
 
 
 class PerfecFailureDetector(object):

@@ -1122,8 +1122,8 @@ def main(args):
     '''
 
 
-    bootstrap = "192.168.1.25:8000"
-    bootsloc = "192.168.1.25:{}".format(args.port)
+    bootstrap = "192.168.1.41:8000"
+    bootsloc = "192.168.1.41:{}".format(args.port)
 
     tBuff = None
     if args.port == "8000":
