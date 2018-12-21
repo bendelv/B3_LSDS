@@ -36,7 +36,7 @@ class Peer:
         self.clientSide.broadcastFoundBlock(block)
 
     def broadcastTransaction(self, transaction):
-        self.client.broadcastTransaction()
+        self.clientSide.broadcastTransaction(transaction)
 
 
 class Server:
@@ -131,7 +131,7 @@ class Client:
 
     def connectToNodes(self):
         res = self.peer.rb.broadcast("POST","/rb/addNode", self.bootsLoc)
-        
+
         if not res:
             return
 
@@ -163,7 +163,7 @@ class Client:
         if blocks is not None:
             self.peer._blockchain.setStorage(blocks)
 
-    def broadcastTransaction(self):
+    def broadcastTransaction(self, transaction):
         self.peer.rb.broadcast("POST", '/rb/addTransaction', transaction.toJson())
         pass
 
