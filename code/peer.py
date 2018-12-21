@@ -38,8 +38,8 @@ class Peer:
     def broadcastTransaction(self, transaction):
         self._client.broadcastTransaction(transaction)
 
-    def askBCCorrections(self, faulty):
-        return self._peer.askBCCorrections()
+    def askBC(self):
+        return self._peer.askBC()
 
 class Server:
     def __init__(self, address, peer):
@@ -75,7 +75,6 @@ class Server:
         self.peer.pfd.add_node(objNode[0]['msg'])
         self.peer.rb.rbHandler(objNode[1], 'POST', '/rb/addNode', objNode[0])
         return self.askBC()
-
 
     def rmNode(self):
         objNode = request.get_json()
@@ -127,76 +126,48 @@ class Client:
 
     def connectToNodes(self):
         res = self.peer.rb.broadcast("POST","/rb/addNode", self.bootsLoc)
-        if not res:
-            return
-        else:
-            hashes = []
-            length = []
-            for chain in res:
-                blocks = chain[0][0]
-                hashes.append(blocks[-1]['_hash'])
-                length.append(len(blocks))
-                trans = chain[0][1]
-                diff = chain[0][2]
-                
-        '''
 
-        hashes = np.array([x[0][0] for x in res],dtype=object)
-        processes = np.array([x[1] for x in res],dtype=object)
-        all_transactions = np.array([x[0][1] for x in res],dtype=object)
-        for transactions in all_transactions:
-            for transaction in transactions:
+        for chain in res:
+            for transaction in chain[0][1]:
                 t = blockchain.Transaction.fromJsonDict(transaction)
                 self.peer._blockchain.addTransaction(t, False)
 
-        # No block in the chain for now
-        hashes[np.where(hashes == None)] = ''
-        unique, index, counts = np.unique(hashes, return_counts=True, return_index=True)
-        counts, unique, index = (list(x) for x in zip(*sorted(zip(counts, unique, index))))
-        best_hash = unique[0]
-        best_process = processes[index[0]]
-
-        if best_hash == '':
-            # We only have '' in the list of hashes, else there is at leaste a
-            # hash that is usable
-            if len(counts) == 1:
-                return
-            else:
-                best_hash = unique[1]
-                best_process = processes[index[1]]
-        blocks = self.peer.pl.send(self.peer.own, best_process, "GET", "/askBC", '')
+        self.handle_conflict(res)
+        return
 
         if blocks is not None:
             self.peer._blockchain.setStorage(blocks)
-        '''
 
     def askBC(self):
         res = self.peer.rb.broadcast('GET', '/rb/askBC', '')
+        self.handle_conflict(res)
 
+    def handle_conflict(self, res):
         if not res:
             return
-        else:
-            blocks = []
-            hashes = []
-            length = []
-            trans = []
-            for chain in res:
-                blocks = chain[0][0]
-                hashes.append(blocks[-1]['_hash'])
-                length.append(len(blocks))
-                trans.append(chain[0][1])
+        hashes = []
+        length = []
+        for chain in res:
+            blocks = chain[0][0]
+            hashes.append(blocks[-1]['_hash'])
+            length.append(len(blocks))
 
+        #res = np.array(res, dtype=object)
+        hashes = np.array(hashes, dtype=object)
+        length = np.array(length, dtype=object)
         hashes[np.where(hashes == None)] = ''
 
         unique_h, counts_h = np.unique(hashes, return_counts=True)
         secure_h = hashes[np.where(counts_h == max(counts_h))]
 
         unique_l, counts_l = np.unique(length, return_counts=True)
-        secure_l = hashes[np.where(counts_l == max(counts_l))]
+        secure_l = length[np.where(counts_l == max(counts_l))]
 
-        secure_BC = res[np.where(secure_h == hashes and secure_l == length)]
-
-        self.peer._blockchain.setStorage(secure_BC[0])
+        secure_BC = []
+        for i in np.where(secure_h == hashes and secure_l == length)[0]:
+            secure_BC.append(res[i])
+        if secure_BC[0][0] is not None:
+            self.peer._blockchain.setStorage(secure_BC[0][0])
 
     def broadcastTransaction(self, transaction):
         self.peer.rb.broadcast("POST", '/rb/addTransaction', transaction.toJson())

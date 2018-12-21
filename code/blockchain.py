@@ -627,7 +627,7 @@ class Block:
                 return False
 
     def getBlockNumber(self):
-        return self.block_number
+        return self._block_number
 
 class Blockchain:
     def __init__(self, application, difficulty=None, blocks=None, transactionBuffer=None):
@@ -791,14 +791,12 @@ class Blockchain:
                 self._newBlock = None
             #at the same time listen server to know if other found H block
             else:
-                validity, faulty= self.getBlockReceived().isValid()
-                if validity:
+                if self.getBlockReceived().isValid():
                     self.addLocBlock(self.getBlockReceived())
                     self.setBlockReceived(None)
                     self._newBlock = None
                 else:
-                    self.adjustBC(faulty)
-
+                    self._peer.askBC()
 
     def mine(self):
         """Implements the mining procedure."""
@@ -827,7 +825,7 @@ class Blockchain:
 
     def adjustBC(self, faulty):
         correction = self._peer.askBCCorrections(faulty)
-        
+
     def broadcastFoundBlock(self,block_found):
         #print('BC :', type(block_found), block_found)
         self._peer.broadcastFoundBlock(block_found)
@@ -867,16 +865,14 @@ class Blockchain:
             prev = self._blocks[i - 1]
             # check if the current hash pointer points to the correct element
             if not current.isValid():
-                return False, i
+                return False
             if current.getPreviousHash() != prev.computeHash():
-                return False, i
+                return False
             # check is the node hasn't been modified
             if current.getHash() != current.computeHash():
-                return False, i
-            if current.getBlockNumber() != prev.getBlockNumber() + 1:
-                return False, i
+                return False
 
-        return True, None
+        return True
 
     def isInside(self, key, get=False, all=None):
         for i in reversed(range(len(self._blocks))):
