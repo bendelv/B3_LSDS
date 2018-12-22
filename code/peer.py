@@ -137,9 +137,6 @@ class Client:
         self.handle_conflict(res)
         return
 
-        if blocks is not None:
-            self.peer._blockchain.setStorage(blocks)
-
     def askBC(self):
         res = self.peer.rb.broadcast('GET', '/rb/askBC', '')
         self.handle_conflict(res)
