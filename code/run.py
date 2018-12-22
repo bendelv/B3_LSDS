@@ -28,12 +28,15 @@ def parse_arguments():
     parser.add_argument("--difficulty", type=int, default=5,
                         help="Sets the difficulty of Proof of Work, only has "
                              "an effect with the `--miner` flag has been set.")
-    parser.add_argument("--attacker", "-a", action='store_true')
+    parser.add_argument("--attacker", "-a", action='count')
     parser.add_argument('--attack_context', '-ac', action='store_true')
     arguments = parser.parse_args()
+    if arguments.attacker is None:
+        arguments.attacker = 0
     return arguments
 
 def main(arguments):
+
     app = allocate_application(arguments)
 
     # Adding a key-value pair to the storage.

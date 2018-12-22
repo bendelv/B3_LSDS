@@ -96,6 +96,8 @@ class Server:
         return json.dumps('', sort_keys=True)
 
     def askBC(self):
+        req = request.get_json()
+        self.peer.rb.rbHandler(req[1], 'GET', '/rb/askBC', req[0])
         return self.peer._blockchain.toJson2()
 
     def view(self):
@@ -146,35 +148,20 @@ class Client:
     def handle_conflict(self, res):
         if not res:
             return
-        hashes = []
+        res.append([json.loads(self.peer._blockchain.toJson2()), "own"])
         length = []
         for chain in res:
-            blocks = chain[0][0]
-            hashes.append(blocks[-1]['_hash'])
-            length.append(len(blocks))
+            if chain is not None:
+                blocks = chain[0][0]
+                length.append(len(blocks))
 
-        #res = np.array(res, dtype=object)
-        hashes = np.array(hashes, dtype=object)
-        length = np.array(length, dtype=object)
-        hashes[np.where(hashes == None)] = ''
+        length = np.array(length)
+        secure_l = np.max(length)
+        i = np.argmax(length)
 
-        #unique_h, counts_h = np.unique(hashes, return_counts=True)
-        #secure_h = hashes[np.where(counts_h == max(counts_h))]
-
-        unique_l, counts_l = np.unique(length, return_counts=True)
-        secure_l = length[np.where(counts_l == max(counts_l))]
-        print("*"*25)
-        print(secure_l)
-        print(length)
-        print(unique_l)
-        print(counts_l)
-        print(np.where(counts_l == max(counts_l)))
-        print("*"*25)
-        secure_BC = []
-        for i in np.where(length.all() == secure_l)[0]:
-            secure_BC.append(res[i])
-        if secure_BC[0][0] is not None:
-            self.peer._blockchain.setStorage(secure_BC[0][0])
+        secure_BC = res[i][0]
+        if secure_BC is not None:
+            self.peer._blockchain.setStorage(secure_BC)
 
     def broadcastTransaction(self, transaction):
         self.peer.rb.broadcast("POST", '/rb/addTransaction', transaction.toJson())

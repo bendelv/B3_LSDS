@@ -748,7 +748,7 @@ class Blockchain:
 
         myStr = "<h2> Transaction pending</h2>" + print_trans(self._transactionBuffer)
         if not self.isValid():
-            return myStr + "<h2> Blockchain corrupted </h2>"
+            myStr += "<h2> Blockchain corrupted </h2>"
         myStr += print_chain(self._blocks)
         return myStr
 
@@ -812,10 +812,12 @@ class Blockchain:
                 self._block_interrupt = True
                 block = self.replace_attack_mine()
                 self.addLocBlock(block)
-                if len(self._blocks) == 9:
+                if len(self._blocks) > 10:
+                    self.setBlockReceived(None)
+                    print("enable _block_interrupt")
+                    self._block_interrupt = False
                     self.broadcastFoundBlock(block)
                     self._newBlock = None
-                    self._block_interrupt = True
             # Blocking attack
 
 
