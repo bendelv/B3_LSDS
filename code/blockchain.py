@@ -924,6 +924,9 @@ class Blockchain:
                 self.setFlagReceived()
             else:
                 self.addLocBlock(block)
+                if not self.isValid():
+                    del self._blocks[-1]
+                    self._peer.askBC()
 
     def isValid(self):
         """Checks if the current state of the blockchain is valid.
