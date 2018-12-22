@@ -942,10 +942,6 @@ class Blockchain:
                 return False
             if current.getBlockNumber() != prev.getBlockNumber() + 1:
                 return False
-            # check is the node hasn't been modified
-            if current.getHash() != current.computeHash():
-                return False
-
         return True
 
     def isInside(self, key, get=False, all=None):
