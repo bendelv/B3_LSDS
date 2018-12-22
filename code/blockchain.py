@@ -8,7 +8,6 @@ import time
 from queue import Queue
 import sys
 from operator import attrgetter
-import pickle
 import json
 import argparse
 from random import randint
@@ -942,10 +941,6 @@ class Blockchain:
                 return False
             if current.getBlockNumber() != prev.getBlockNumber() + 1:
                 return False
-            # check is the node hasn't been modified
-            if current.getHash() != current.computeHash():
-                return False
-
         return True
 
     def isInside(self, key, get=False, all=None):
