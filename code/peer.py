@@ -19,7 +19,7 @@ class Peer:
         self.bootsLoc = bootsLoc# DEPRECATED USE self.own
         self.own = "{}".format(bootsLoc)
         self.bootsDist = bootsDist
-        
+
         self._server = Server(bootsLoc, self)
         time.sleep(1)
         self.pl = PerfectLink()
@@ -158,14 +158,20 @@ class Client:
         length = np.array(length, dtype=object)
         hashes[np.where(hashes == None)] = ''
 
-        unique_h, counts_h = np.unique(hashes, return_counts=True)
-        secure_h = hashes[np.where(counts_h == max(counts_h))]
+        #unique_h, counts_h = np.unique(hashes, return_counts=True)
+        #secure_h = hashes[np.where(counts_h == max(counts_h))]
 
         unique_l, counts_l = np.unique(length, return_counts=True)
         secure_l = length[np.where(counts_l == max(counts_l))]
-
+        print("*"*25)
+        print(secure_l)
+        print(length)
+        print(unique_l)
+        print(counts_l)
+        print(np.where(counts_l == max(counts_l)))
+        print("*"*25)
         secure_BC = []
-        for i in np.where(secure_h == hashes and secure_l == length)[0]:
+        for i in np.where(length.all() == secure_l)[0]:
             secure_BC.append(res[i])
         if secure_BC[0][0] is not None:
             self.peer._blockchain.setStorage(secure_BC[0][0])

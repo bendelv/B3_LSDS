@@ -807,7 +807,7 @@ class Blockchain:
         #mine block
         while True:
             #replace attack
-            if self._attacker == 1 and len(self._blocks) >= 3 and len(self._blocks) < 10:
+            if self._attacker == 1 and len(self._blocks) >= 3 and len(self._blocks) <= 10:
                 print("Evil attacker replace")
                 self._block_interrupt = True
                 block = self.replace_attack_mine()
@@ -835,6 +835,7 @@ class Blockchain:
                     self.setBlockReceived(None)
                     self._newBlock = None
                     if not self.isValid():
+                        del self._blocks[-1]
                         self._peer.askBC()
 
     def replace_attack_mine(self):
@@ -899,7 +900,8 @@ class Blockchain:
 
     def setFlagReceived(self):
         if not self._block_interrupt:
-            self._newBlock.flag_received = True
+            if self._newBlock is not None:
+                self._newBlock.flag_received = True
 
     def addLocBlock(self, block):
         for t in block.getTransactions():

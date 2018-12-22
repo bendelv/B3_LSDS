@@ -5,7 +5,7 @@ import time
 def allocate_application(arguments):
     application = Application(
         bootstrap=arguments.bootstrap,
-        bootsloc="192.168.1.41:{}".format(arguments.port),
+        bootsloc="192.168.1.25:{}".format(arguments.port),
         miner=arguments.miner,
         difficulty=arguments.difficulty,
         attacker=arguments.attacker,
@@ -21,7 +21,7 @@ def parse_arguments():
 
     parser.add_argument("--miner", type=bool, default=True, nargs='?',
                         const=True, help="Starts the mining procedure.")
-    parser.add_argument("--bootstrap", type=str, default='192.168.1.41:8000',
+    parser.add_argument("--bootstrap", type=str, default='192.168.1.25:8000',
                         help="Sets the address of the bootstrap node.")
     parser.add_argument("--port", '-p', type=str, default='8000',
                         help="Sets the address of the local node.")
