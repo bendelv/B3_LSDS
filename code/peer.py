@@ -3,7 +3,6 @@ from argparse import ArgumentParser, ArgumentTypeError
 from threading import Thread
 import http.client as httplib
 import numpy as np
-import socket
 import json
 import time
 

@@ -8,7 +8,6 @@ import time
 from queue import Queue
 import sys
 from operator import attrgetter
-import pickle
 import json
 import argparse
 from random import randint
