@@ -986,18 +986,12 @@ def main(args):
     sys.exit()
     '''
 
-    ''' OKAY  With blockChaine and 0 transaction   '''
-    '''
-    bc= Blockchain("bootstrap", 3)
-    bc2 = Blockchain.fromJsonDict(json.loads(bc.toJson()))
-    print(bc2.toJson() == bc.toJson())
-    sys.exit()
-    '''
-
     '''Test with 1 transaction:
             - OKAY with merkleTree
             - OKAY with block
             - OKAY with blockchain
+    '''
+    '''
     transactionBuffer = []
     t1 = Transaction("pierre1", "key4", "some value set to 0")
     transactionBuffer.append(t1)
@@ -1016,19 +1010,6 @@ def main(args):
     bl = Block(time.time(), transactionBuffer, "")
     bl2 = Block.fromJsonDict(json.loads(bl.toJson()))
     print(bl2.toJson() == bl.toJson())
-    sys.exit()
-    '''
-
-    ''' OKAY  With blockChaine and 1 transaction   '''
-    '''
-    transactionBuffer = []
-    t1 = Transaction("pierre1", "key4", "some value set to 0")
-    transactionBuffer.append(t1)
-    bc= Blockchain("bootstrap", 3)
-    bc.addTransaction(t1)
-    bc.mine()
-    bc2 = Blockchain.fromJsonDict(json.loads(bc.toJson()))
-    print(bc2.toJson() == bc.toJson())
     sys.exit()
     '''
 
@@ -1063,21 +1044,6 @@ def main(args):
     sys.exit()
     '''
 
-    ''' OKAY  With blockChaine and 1 transaction   '''
-    '''
-    transactionBuffer = []
-    t1 = Transaction("pierre1", "key4", "some value set to 0")
-    t2 = Transaction("pierre2", "key4", "some key value")
-    bc= Blockchain("bootstrap", 3)
-    bc.addTransaction(t1)
-    bc.addTransaction(t2)
-    bc.mine()
-    bc2 = Blockchain.fromJsonDict(json.loads(bc.toJson()))
-    print(bc2.toJson() == bc.toJson())
-    sys.exit()
-    '''
-
-
 
     '''Test with 3 transactions:
             - OKAY with merkleTree
@@ -1111,22 +1077,6 @@ def main(args):
     bl = Block(time.time(), transactionBuffer, "")
     bl2 = Block.fromJsonDict(json.loads(bl.toJson()))
     print(bl2.toJson() == bl.toJson())
-    sys.exit()
-    '''
-
-    ''' OKAY  With blockChaine and 3 transaction   '''
-    '''
-    transactionBuffer = []
-    t1 = Transaction("pierre1", "key4", "some value set to 0")
-    t2 = Transaction("pierre2", "key4", "some key value")
-    t3 = Transaction("pierre3", "key44", "some other value")
-    bc= Blockchain("bootstrap", 3)
-    bc.addTransaction(t1)
-    bc.addTransaction(t2)
-    bc.addTransaction(t3)
-    bc.mine()
-    bc2 = Blockchain.fromJsonDict(json.loads(bc.toJson()))
-    print(bc2.toJson() == bc.toJson())
     sys.exit()
     '''
 
@@ -1169,84 +1119,8 @@ def main(args):
     print(bl2.toJson() == bl.toJson())
     sys.exit()
     '''
-
-    ''' OKAY  With blockChaine and 4 transaction   '''
+    
     '''
-    transactionBuffer = []
-    t1 = Transaction("pierre1", "key4", "some value set to 0")
-    t2 = Transaction("pierre2", "key4", "some key value")
-    t3 = Transaction("pierre3", "key44", "some other value")
-    t4 = Transaction("pierre3", "key44", "some random other value")
-    bc= Blockchain("bootstrap", 3)
-    bc.addTransaction(t1)
-    bc.addTransaction(t2)
-    bc.addTransaction(t3)
-    bc.mine()
-    bc2 = Blockchain.fromJsonDict(json.loads(bc.toJson()))
-    print(bc2.toJson() == bc.toJson())
-    sys.exit()
-    '''
-
-
-    '''Test with 4 transactions and multiple blocks:
-            - OKAY with 4 transaction and 2 blocks
-    '''
-    '''
-    bc= Blockchain("bootstrap", 3)
-    t1 = Transaction("pierre1", "key4", "some value set to 0")
-    bc.addTransaction(t1)
-    t2 = Transaction("pierre2", "key4", "some key value")
-    bc.addTransaction(t2)
-    t3 = Transaction("pierre3", "key44", "some other value")
-    bc.addTransaction(t3)
-    t4 = Transaction("pierre3", "key44", "some random other value")
-    bc.addTransaction(t4)
-    bc.mine()
-    t21 = Transaction("pierre4", "key4", "some value set to 0")
-    bc.addTransaction(t21)
-    t22 = Transaction("pierre5", "key4", "some key value")
-    bc.addTransaction(t22)
-    t23 = Transaction("pierre6", "key44", "some other value")
-    bc.addTransaction(t23)
-    bc.mine()
-    bc2 = Blockchain.fromJsonDict(json.loads(bc.toJson()))
-    print(bc2.toJson() == bc.toJson())
-    sys.exit()
-    '''
-
-    '''
-    bc= Blockchain("bootstrap", 3)
-    t1 = Transaction("pierre1", "key4", "some value set to 0")
-    bc.addTransaction(t1)
-    t2 = Transaction("pierre2", "key4", "some key value")
-    bc.addTransaction(t2)
-    t3 = Transaction("pierre3", "key44", "some other value")
-    bc.addTransaction(t3)
-    t4 = Transaction("pierre3", "key44", "some random other value")
-    bc.addTransaction(t4)
-    bc.mine()
-    t21 = Transaction("pierre4", "key4", "some value set to 0")
-    bc.addTransaction(t21)
-    t22 = Transaction("pierre5", "key4", "some key value")
-    bc.addTransaction(t22)
-    t23 = Transaction("pierre6", "key44", "some other value")
-    bc.addTransaction(t23)
-    bc.mine()
-    t31 = Transaction("pierre7", "key4", "some value set to 0")
-    bc.addTransaction(t31)
-    t32 = Transaction("pierre8", "key4", "some key value")
-    bc.addTransaction(t32)
-    t33 = Transaction("pierre9", "key44", "some other value")
-    bc.addTransaction(t33)
-    t34 = Transaction("pierre10", "key44", "some random other value")
-    bc.addTransaction(t34)
-    bc.mine()
-    bc2 = Blockchain.fromJsonDict(json.loads(bc.toJson()))
-    print(bc2.toJson() == bc.toJson())
-    sys.exit()
-    '''
-
-
     bootstrap = "192.168.1.25:8000"
     bootsloc = "192.168.1.25:{}".format(args.port)
 
@@ -1280,6 +1154,7 @@ def main(args):
         t4 = Transaction("Antoine", "Ouais mais pas longtemps je dois bosser demain")
         app.addTransaction(t4)
     #app._blockchain._peer.removeConnection()
+    '''
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
